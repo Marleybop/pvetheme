@@ -1,0 +1,363 @@
+/* ==========================================================================
+   Marleybop layer for Proxmox VE  (version @MBVER@)
+   Sits on top of Proxmox's own dark theme after its colours have been mapped
+   to the Marleybop palette (palette.sed). Sharp, quiet: grey surfaces do the
+   work and Rust is kept for the main action button.
+   ========================================================================== */
+
+@font-face { font-family: "Marleybop Inter"; font-weight: 400; font-style: normal; font-display: swap;
+  src: url("marleybop-inter-400.woff2?v=@MBVER@") format("woff2"); }
+@font-face { font-family: "Marleybop Inter"; font-weight: 500; font-style: normal; font-display: swap;
+  src: url("marleybop-inter-500.woff2?v=@MBVER@") format("woff2"); }
+@font-face { font-family: "Marleybop Inter"; font-weight: 600 800; font-style: normal; font-display: swap;
+  src: url("marleybop-inter-600.woff2?v=@MBVER@") format("woff2"); }
+@font-face { font-family: "Marleybop Grotesk"; font-weight: 400 700; font-style: normal; font-display: swap;
+  src: url("marleybop-grotesk-500.woff2?v=@MBVER@") format("woff2"); }
+@font-face { font-family: "Marleybop Mono"; font-weight: 400 700; font-style: normal; font-display: swap;
+  src: url("marleybop-mono-500.woff2?v=@MBVER@") format("woff2"); }
+
+:root {
+  --mb-theme: marleybop-dark;
+  --mb-bg: #111214;
+  --mb-surface: #1c1e21;
+  --mb-well: #151719;
+  --mb-raised: #26292d;
+  --mb-hover: #22252a;
+  --mb-selected: #2b2e33;
+  --mb-border: #2b2e33;
+  --mb-border-strong: #3a3e44;
+  --mb-text: #f6f5f2;
+  --mb-text-2: #b9bdc2;
+  --mb-muted: #8c9198;
+  --mb-ink: #16181b;
+  --mb-paper: #f6f5f2;
+  --mb-rust: #c8452a;
+  --mb-rust-dark: #a33620;
+  --mb-link: #e2683f;
+  --mb-good: #6db04a;
+  --mb-warn: #e0a93b;
+  --mb-bad: #ff8a80;
+  --mb-bad-fill: #e5534b;
+  --mb-radius: 4px;
+  --mb-radius-lg: 8px;
+  --mb-font: "Marleybop Inter", Inter, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mb-font-head: "Marleybop Grotesk", "Space Grotesk", "Marleybop Inter", Inter, "Segoe UI", system-ui, sans-serif;
+  --mb-font-mono: "Marleybop Mono", "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* read by marleybop-theme.js for the RRD charts */
+  /* grey carries the main series, the warm colour marks the second one */
+  --mb-chart-1: #b9bdc2;
+  --mb-chart-2: #e2683f;
+  --mb-chart-3: #6f9fc7;
+  --mb-chart-4: #6db04a;
+  --mb-chart-5: #e0a93b;
+  --mb-chart-6: #8c9198;
+  --mb-chart-fill-opacity: 0.16;
+
+  /* read by Proxmox's own gauge and chart code */
+  --pwt-panel-background: #1c1e21;
+  --pwt-text-color: #f6f5f2;
+  --pwt-gauge-default: #b9bdc2;
+  --pwt-gauge-back: #26292d;
+  --pwt-gauge-warn: #e0a93b;
+  --pwt-gauge-crit: #e5534b;
+  --pwt-chart-primary: #3a3e44;
+  --pwt-chart-grid-stroke: #2b2e33;
+
+  color-scheme: dark;
+  accent-color: #c8452a;
+}
+
+/* ---------- Scrollbars --------------------------------------------------- */
+* { scrollbar-width: thin; scrollbar-color: #3a3e44 transparent; }
+@supports not (scrollbar-width: thin) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3a3e44; border: 2px solid transparent; background-clip: padding-box; border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background-color: #4a4f56; }
+}
+::selection { background: #4a4f56; color: #fff; }
+
+/* ---------- Type ---------------------------------------------------------
+   ExtJS sets its font class by class, so the text classes are listed here.
+   Icon classes (.fa, .x-fa, tree and tool glyphs) are left alone on purpose. */
+.x-body, .x-btn-inner, .x-form-item-label, .x-form-item-label-inner, .x-form-text, .x-form-display-field,
+.x-form-cb-label, .x-form-textarea, .x-fieldset-header-text, .x-grid-cell, .x-grid-cell-inner,
+.x-grid-empty, .x-grid-group-title, .x-column-header, .x-column-header-text, .x-column-header-text-inner,
+.x-menu-item-text, .x-menu-header, .x-tab-inner, .x-toolbar-text, .x-treelist-item-text, .x-tree-node-text,
+.x-boundlist-item, .x-tip-body, .x-title-text, .x-panel-header-title, .x-window-header-title,
+.x-progress-text, .x-mask-msg-text, .x-datepicker, .x-monthpicker, .x-legend-item, .x-autocontainer-innerCt,
+.x-toast, .pmx-hint, .pmx-md, .x-component-default, input, select, textarea, button {
+  font-family: var(--mb-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+/* Inter runs wider than the Helvetica the fixed-width columns were sized for */
+.x-grid-cell-inner, .x-tree-node-text { font-size: 12.5px; letter-spacing: -0.01em; }
+.x-panel-header-title-default, .x-window-header-title-default,
+.x-panel-header-title-default > .x-title-text, .x-window-header-title-default > .x-title-text {
+  font-family: var(--mb-font-head);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--mb-text);
+}
+pre, code, tt, .pmx-md code, .pmx-md pre, .x-form-textarea.pmx-monospace, .pmx-monospace,
+.pve-ceph-warning-detail, div[id^="logView-"] .x-panel-body, .proxmox-log-view, .pmx-logview pre {
+  font-family: var(--mb-font-mono);
+  font-size: 12px;
+}
+a, .pmx-md a, .pmx-hint a, .eol-notice a { color: var(--mb-link); }
+a:hover, .pmx-md a:hover { color: #f08a66; }
+
+/* ---------- Page, panels, splitters -------------------------------------- */
+.x-body, .x-viewport > .x-body, body.x-border-layout-ct, div.x-border-layout-ct { background-color: var(--mb-bg); color: var(--mb-text); }
+.x-panel-body-default { background-color: var(--mb-surface); border-color: var(--mb-border); color: var(--mb-text); }
+.x-panel-header-default { background-color: var(--mb-surface); border-bottom: 1px solid var(--mb-border); }
+.x-panel-header-default-vertical { border-bottom: none; }
+.x-panel-default-outer-border-trbl, .x-panel-default-framed { border-color: var(--mb-border) !important; }
+.pve-toolbar-bg { background-color: var(--mb-surface); }
+.x-splitter, .x-splitter-horizontal, .x-splitter-vertical { background-color: var(--mb-bg); }
+.x-splitter-active { background-color: var(--mb-border-strong); opacity: 0.8; }
+.x-layout-split-left, .x-layout-split-right, .x-layout-split-top, .x-layout-split-bottom { opacity: 0.55; }
+.x-keyboard-mode .x-splitter-focus::after { border-color: var(--mb-paper); }
+/* header tools are blue sprites in the stock theme: make them neutral */
+.x-tool-img { filter: grayscale(1) brightness(1.9); opacity: 0.75; }
+.x-tool-img.x-tool-expand, .x-tool-img.x-tool-collapse, .x-tool-img.x-tool-refresh { filter: grayscale(1) brightness(1.4); }
+.x-tool-over .x-tool-img, .x-tool-over .x-tool-img.x-tool-expand,
+.x-tool-over .x-tool-img.x-tool-collapse, .x-tool-over .x-tool-img.x-tool-refresh { filter: grayscale(1) brightness(2.4); opacity: 1; }
+.x-tool-tool-el.fa, .x-tool-tool-el.x-fa, .x-tool .fa { color: var(--mb-text-2); }
+.x-tool-over .x-tool-tool-el.fa, .x-tool-over .fa { color: var(--mb-text); }
+
+/* ---------- Toolbars and buttons ----------------------------------------- */
+.x-toolbar, .x-toolbar-default { background-color: var(--mb-surface); border-color: var(--mb-border); }
+.x-toolbar-default.x-docked-top { border-color: var(--mb-border); }
+.x-toolbar-footer { background-color: var(--mb-surface); }
+.x-toolbar-default .x-toolbar-separator { border-color: var(--mb-border-strong); }
+.x-toolbar-text-default { color: var(--mb-text-2); }
+
+.x-btn { border-radius: var(--mb-radius); transition: background-color 0.12s ease, border-color 0.12s ease; }
+.x-btn-default-toolbar-small { background-color: var(--mb-raised); border-color: var(--mb-border-strong); box-shadow: none; }
+.x-btn-default-toolbar-small .x-btn-inner-default-toolbar-small { color: var(--mb-text); font-weight: 500; }
+.x-btn-default-toolbar-small .x-btn-icon-el-default-toolbar-small { color: var(--mb-text-2); }
+.x-btn-default-toolbar-small.x-btn-over,
+.x-keyboard-mode .x-btn-default-toolbar-small.x-btn-focus { background-color: #30343a; border-color: #4a4f56; }
+.x-btn-default-toolbar-small.x-btn.x-btn-menu-active { background-color: #30343a; border-color: #4a4f56; }
+.x-btn-default-toolbar-small.x-btn.x-btn-pressed { background-color: var(--mb-paper); border-color: var(--mb-paper); }
+.x-btn-default-toolbar-small.x-btn.x-btn-pressed .x-btn-inner-default-toolbar-small,
+.x-btn-default-toolbar-small.x-btn.x-btn-pressed .x-btn-icon-el-default-toolbar-small { color: var(--mb-ink); }
+.x-btn-default-toolbar-small.x-btn.x-btn-disabled { background-color: transparent; border-color: var(--mb-border); }
+.x-btn.x-btn-disabled, .x-btn.x-item-disabled { opacity: 0.45; }
+.x-keyboard-mode .x-btn-focus { outline: 2px solid var(--mb-paper); outline-offset: 1px; }
+
+/* ExtJS's "default" button UI is used all over (header buttons, the tree's gear, toggles),
+   so outside dialogs it is neutral like every other button */
+.x-btn-default-small { background-color: var(--mb-raised); border-color: var(--mb-border-strong); box-shadow: none; }
+.x-btn-default-small .x-btn-inner-default-small { color: var(--mb-text); font-weight: 500; }
+.x-btn-default-small .x-btn-icon-el-default-small { color: var(--mb-text-2); }
+.x-btn-default-small.x-btn-over,
+.x-keyboard-mode .x-btn-default-small.x-btn-focus { background-color: #30343a; border-color: #4a4f56; }
+.x-btn-default-small.x-btn.x-btn-menu-active { background-color: #30343a; border-color: #4a4f56; }
+.x-btn-default-small.x-btn.x-btn-disabled { background-color: transparent; border-color: var(--mb-border); }
+.x-btn-default-small.x-btn.x-btn-pressed,
+.proxmox-inline-button.x-btn.x-btn-pressed,
+.proxmox-inline-button.x-btn.x-btn-pressed.x-btn-default-toolbar-small { background-color: var(--mb-paper); border-color: var(--mb-paper); }
+.x-btn-default-small.x-btn.x-btn-pressed .x-btn-inner, .x-btn-default-small.x-btn.x-btn-pressed .x-btn-icon-el,
+.proxmox-inline-button.x-btn.x-btn-pressed .x-btn-inner, .proxmox-inline-button.x-btn.x-btn-pressed .x-btn-icon-el { color: var(--mb-ink); }
+.proxmox-inline-button { background-color: var(--mb-raised); border-color: var(--mb-border-strong); }
+.proxmox-inline-button .x-btn-inner, .proxmox-inline-button .x-btn-icon-el { color: var(--mb-text); }
+.proxmox-inline-button.x-btn-over,
+.x-keyboard-mode .proxmox-inline-button.x-btn-default-toolbar-small.x-btn-focus { background-color: #30343a; border-color: #4a4f56; }
+.x-segmented-button .x-btn { border-radius: 0; }
+.x-segmented-button .x-segmented-button-first { border-radius: var(--mb-radius) 0 0 var(--mb-radius); }
+.x-segmented-button .x-segmented-button-last { border-radius: 0 var(--mb-radius) var(--mb-radius) 0; }
+
+/* the main action in a dialog: the one Rust element */
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small) { background-color: var(--mb-rust); border-color: var(--mb-rust); }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small) .x-btn-inner-default-small { color: #fff; font-weight: 600; }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small) .x-btn-icon-el-default-small { color: #fff; }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn-over,
+.x-keyboard-mode .x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn-focus { background-color: #d5502f; border-color: #d5502f; }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-pressed { background-color: var(--mb-rust-dark); border-color: var(--mb-rust-dark); }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-pressed .x-btn-inner { color: #fff; }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-disabled { background-color: var(--mb-raised); border-color: var(--mb-border-strong); }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-disabled .x-btn-inner-default-small { color: var(--mb-text-2); }
+
+/* ---------- Tabs: selected control is Paper fill, Ink text --------------- */
+.x-tab-bar-default, .x-tab-bar-default-top, .x-tab-bar-body-default { background-color: var(--mb-surface); }
+.x-tab-bar-default-top > .x-tab-bar-body-default { padding-bottom: 4px; }
+.x-tab-bar-strip-default { background-color: var(--mb-border); }
+.x-tab-default, .x-tab-default-top { background-color: transparent; border-color: transparent; border-radius: var(--mb-radius); transition: background-color 0.12s ease; }
+.x-tab-inner-default { color: var(--mb-text-2); font-weight: 500; }
+.x-tab-icon-el-default { color: var(--mb-text-2); }
+.x-tab-default.x-tab-over { background-color: var(--mb-raised); border-color: var(--mb-raised); }
+.x-tab-default.x-tab-over .x-tab-inner-default { color: var(--mb-text); }
+.x-tab-default.x-tab.x-tab-active { background-color: var(--mb-paper); border-color: var(--mb-paper); }
+.x-tab-default.x-tab.x-tab-active .x-tab-inner-default,
+.x-tab-default.x-tab.x-tab-active .x-tab-icon-el-default { color: var(--mb-ink); font-weight: 600; }
+.x-tab-default.x-tab.x-tab-disabled { background-color: transparent; }
+.x-tab-default.x-tab.x-tab-disabled .x-tab-inner-default { color: var(--mb-muted); }
+.x-keyboard-mode .x-tab-default.x-tab-focus,
+.x-keyboard-mode .x-tab-default.x-tab-focus.x-tab-over { background-color: var(--mb-raised); border-color: var(--mb-paper); }
+.x-keyboard-mode .x-tab-default.x-tab-focus.x-tab-active { background-color: var(--mb-paper); border-color: var(--mb-muted); }
+
+/* ---------- Side navigation (the per-object menu) ------------------------ */
+.x-treelist-pve-nav { background-color: var(--mb-surface); border-color: var(--mb-border); }
+.x-treelist-item, .x-treelist-pve-nav .x-treelist-item { background-color: transparent; }
+.x-treelist-row { border-radius: 0; transition: background-color 0.12s ease; }
+.x-treelist-item-text { color: var(--mb-text-2); }
+.x-treelist-item-icon, .x-treelist-item-expander { color: var(--mb-muted); }
+.x-treelist-row-over { background-color: var(--mb-hover); }
+.x-treelist-row-over > * > .x-treelist-item-text, .x-treelist-row-over > * > .x-treelist-item-icon { color: var(--mb-text); }
+.x-treelist-item-selected > .x-treelist-row { background-color: var(--mb-selected); box-shadow: inset 2px 0 0 var(--mb-paper); }
+.x-treelist-item-selected > .x-treelist-row > * > .x-treelist-item-text { color: var(--mb-text); font-weight: 600; }
+.x-treelist-item-selected > .x-treelist-row > * > .x-treelist-item-icon { color: var(--mb-text); }
+.x-treelist-item-selected .lxc::after, .x-treelist-item-selected .qemu::after { background-color: var(--mb-selected); text-shadow: -1px 0 1px var(--mb-selected); }
+
+/* ---------- Grids and trees ---------------------------------------------- */
+.x-grid-header-ct { background-color: var(--mb-surface); border: none; border-bottom: 1px solid var(--mb-border); }
+.x-column-header, .x-column-header-default { background-color: var(--mb-surface); border-color: var(--mb-border); color: var(--mb-muted); }
+.x-column-header-text, .x-column-header-text-inner {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--mb-muted);
+}
+.x-column-header-over, .x-column-header-open,
+.x-column-header-last .x-column-header-over .x-column-header-trigger { background-color: var(--mb-hover); }
+.x-column-header-sort-ASC, .x-column-header-sort-DESC { background-color: var(--mb-surface); }
+.x-column-header-sort-ASC .x-column-header-text, .x-column-header-sort-DESC .x-column-header-text,
+.x-column-header-sort-ASC .x-column-header-text-inner, .x-column-header-sort-DESC .x-column-header-text-inner { color: var(--mb-text); }
+.x-column-header-trigger { background-color: var(--mb-raised); border-color: var(--mb-border-strong); }
+
+.x-grid-body, .x-grid-view, .x-tree-view { background-color: var(--mb-surface); }
+.x-grid-item, .x-grid-cell-row-numberer { background-color: var(--mb-surface); color: var(--mb-text); }
+.x-grid-item-alt { background-color: #191b1e; }
+.x-grid-with-row-lines .x-grid-item, .x-grid-with-row-lines .x-grid-item:first-child,
+.x-grid-with-row-lines .x-grid-item:last-child { border-color: #24272b; }
+.x-grid-with-col-lines .x-grid-cell, .x-grid-cell-special { border-color: #24272b; }
+.x-grid-item-over, .x-grid-with-row-lines .x-grid-item.x-grid-item-over { background-color: var(--mb-hover); border-color: #24272b; }
+.x-grid-item-selected, .x-grid-with-row-lines .x-grid-item.x-grid-item-selected { background-color: var(--mb-selected); border-color: #24272b; }
+.x-grid-with-row-lines .x-grid-item-selected + .x-grid-item,
+.x-grid-with-row-lines .x-grid-item-over + .x-grid-item { border-color: #24272b; }
+.x-keyboard-mode .x-grid-item-focused { background-color: var(--mb-selected); color: #fff; }
+.x-keyboard-mode .x-grid-item-focused .x-grid-cell-inner::before { border-color: var(--mb-muted); }
+.x-keyboard-mode .x-column-header.x-column-header-focus .x-column-header-inner::after { border-color: var(--mb-muted); }
+.x-grid-item-over .lxc::after, .x-grid-item-over .qemu::after,
+.x-treelist-item-over .lxc::after, .x-treelist-item-over .qemu::after { background-color: var(--mb-hover) !important; text-shadow: -1px 0 1px var(--mb-hover); }
+.x-grid-item-selected .lxc::after, .x-grid-item-selected .qemu::after,
+.x-keyboard-mode .x-grid-item-focused .lxc::after, .x-keyboard-mode .x-grid-item-focused .qemu::after { background-color: var(--mb-selected) !important; text-shadow: -1px 0 1px var(--mb-selected); }
+.x-grid-item-alt .x-grid-icon-custom.lxc::after, .x-grid-item-alt .x-grid-icon-custom.qemu::after { background-color: #191b1e; }
+.x-grid-group-hd { background-color: var(--mb-well); border-color: var(--mb-border); }
+.x-grid-group-title { color: var(--mb-text-2); font-weight: 600; }
+.proxmox-apt-repos .x-grid-group-hd { background-color: var(--mb-well); }
+.x-grid-empty { background-color: var(--mb-surface); color: var(--mb-muted); }
+.x-grid-row-summary .x-grid-cell { border-color: var(--mb-border); }
+.proxmox-disabled-row, .proxmox-disabled-row td { color: var(--mb-muted); }
+.proxmox-good-row { background-color: #1f3318; }
+div[id^="pveResourceTree-"][id$="-body"] { border-color: var(--mb-surface); }
+.x-tree-node-text { color: var(--mb-text); }
+.x-tree-icon-custom.stopped, .x-tree-icon-custom.offline,
+.x-grid-icon-custom.stopped, .x-grid-icon-custom.offline { color: #6b7078; }
+.x-tree-icon-custom.online::after, .x-grid-icon-custom.online::after,
+.x-tree-icon-custom.running::after, .x-grid-icon-custom.running::after { color: var(--mb-good); }
+.x-action-col-icon::before { color: var(--mb-text-2); }
+.x-action-col-icon:hover::before, .x-action-col-icon:hover::after { color: var(--mb-text); text-shadow: none; }
+.x-dd-drag-proxy { border-radius: var(--mb-radius); }
+
+/* ---------- Forms -------------------------------------------------------- */
+.x-form-item-label-default { color: var(--mb-text-2); }
+.x-form-display-field-default { color: var(--mb-text); }
+.x-form-cb-label-default { color: var(--mb-text); }
+.x-form-trigger-wrap-default { background-color: var(--mb-well); border-color: var(--mb-border-strong); border-radius: var(--mb-radius); transition: border-color 0.12s ease; }
+.x-form-text-default, .x-form-trigger-default, .x-form-spinner-default { background-color: transparent; }
+.x-form-text-default { color: var(--mb-text); }
+.x-form-text-default.x-form-textarea { background-color: var(--mb-well); border-radius: var(--mb-radius); }
+.x-form-trigger-wrap-default.x-form-trigger-wrap-focus { border-color: var(--mb-text-2); }
+.x-form-trigger-wrap-default.x-form-trigger-wrap-invalid { border-color: var(--mb-bad-fill); }
+.x-form-empty-field-default, .x-form-text-default::placeholder { color: #6b7078; }
+.x-form-readonly .x-form-trigger-wrap-default, .x-item-disabled .x-form-trigger-wrap-default { background-color: transparent; }
+.x-form-trigger-default.x-form-trigger-over, .x-form-spinner-default.x-form-spinner-over { background-color: var(--mb-raised); }
+.x-fieldset-default { border-color: var(--mb-border); border-radius: var(--mb-radius); }
+.x-fieldset-header-default > .x-fieldset-header-text { color: var(--mb-text-2); font-weight: 600; }
+.x-form-invalid-under, .x-form-invalid-under-default { color: var(--mb-bad); }
+.pve-edit-tag.editable span { background-color: var(--mb-well); border-color: var(--mb-border-strong); }
+
+/* ---------- Menus, dropdown lists, tooltips ------------------------------ */
+.x-menu-default { border: 1px solid var(--mb-border-strong); border-radius: 6px; background-color: var(--mb-surface); }
+.x-menu-body-default { background-color: var(--mb-surface); border-radius: 6px; }
+.x-menu-header { background-color: var(--mb-surface); color: var(--mb-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.x-menu-item-text-default { color: var(--mb-text); }
+.x-menu-item-icon-default { color: var(--mb-text-2); }
+.x-menu-item-default.x-menu-item-focus, .x-menu-item-default.x-menu-item-active { background-color: var(--mb-selected); color: #fff; }
+.x-menu-item-default.x-menu-item-separator, .x-menu-icon-separator-default { background-color: var(--mb-surface); border-color: var(--mb-border); }
+.x-menu-item-default.x-menu-item-disabled .x-menu-item-text-default { color: var(--mb-muted); }
+
+.x-boundlist { background-color: var(--mb-surface); border: 1px solid var(--mb-border-strong); border-radius: 6px; }
+.x-boundlist-item { background-color: transparent; border-color: transparent; color: var(--mb-text); }
+.x-boundlist-item-over { background-color: var(--mb-hover); }
+.x-boundlist-selected { background-color: var(--mb-selected); }
+.x-boundlist .x-grid-item { background-color: var(--mb-surface); }
+.x-boundlist .x-grid-item-over { background-color: var(--mb-hover); }
+.x-boundlist .x-grid-item-selected { background-color: var(--mb-selected); }
+
+.x-tip-default { background-color: #0b0c0d; border-color: var(--mb-border-strong); border-radius: var(--mb-radius); }
+.x-tip-body-default { color: var(--mb-text); }
+.x-tip-form-invalid { background-color: #0b0c0d; border-color: var(--mb-bad-fill); border-radius: var(--mb-radius); }
+
+/* ---------- Windows and masks -------------------------------------------- */
+.x-window-default { background-color: var(--mb-surface); border: 1px solid var(--mb-border-strong); border-radius: var(--mb-radius-lg); }
+.x-window-header-default { background-color: var(--mb-surface); border-color: transparent; border-radius: 7px 7px 0 0; }
+.x-window-header-default-top { border-bottom: 1px solid var(--mb-border); }
+.x-window-body-default { background-color: var(--mb-surface); border-color: transparent; color: var(--mb-text); }
+.x-window-default > .x-toolbar-footer, .x-window-default > .x-docked-bottom { border-radius: 0 0 7px 7px; }
+.x-window-ghost { background-color: var(--mb-surface); }
+.x-message-box .x-window-body { background-color: var(--mb-surface); }
+.x-css-shadow { border-radius: var(--mb-radius-lg); box-shadow: 0 18px 50px 4px rgba(0, 0, 0, 0.6) !important; }
+.x-mask { background-color: rgba(11, 12, 13, 0.62); }
+.x-mask-msg { background-color: var(--mb-surface); border: 1px solid var(--mb-border-strong); border-radius: 6px; }
+.x-window-header-default .x-mask, .x-window-header-default-top .x-mask { background-color: rgba(28, 30, 33, 0.7); }
+.x-toast { border-radius: var(--mb-radius-lg); }
+.install-mask { background-color: var(--mb-surface); }
+.pmx-hint { background-color: #2a2413; color: var(--mb-text); border-radius: var(--mb-radius); }
+.proxmox-warning-row { background-color: #2a2413; }
+
+/* ---------- Progress bars, gauges, charts, status ------------------------ */
+.x-progress-default { background-color: var(--mb-raised); border-radius: 2px; overflow: hidden; }
+.x-progress-default .x-progress-bar-default { background-color: var(--mb-text-2); }
+.x-progress-default .x-progress-text { color: var(--mb-ink); }
+.x-progress-default .x-progress-text-back { color: var(--mb-text); }
+.x-progress.warning .x-progress-bar { background-color: var(--mb-warn); }
+.x-progress.critical .x-progress-bar { background-color: var(--mb-bad-fill); }
+.usage-wrapper { border-color: var(--mb-muted); }
+.usage { background-color: var(--mb-text-2); }
+.x-legend, .x-legend-default { background-color: transparent; }
+.x-legend-container { background-color: transparent; box-shadow: none; }
+.x-legend-horizontal .x-legend-item, .x-legend-horizontal .x-legend-item:first-child {
+  background-color: transparent; border-color: var(--mb-border); color: var(--mb-text-2);
+}
+.x-legend-item-inactive { opacity: 0.4; }
+.good, .fa.good { color: var(--mb-good); }
+.warning, .fa.warning { color: var(--mb-warn); }
+.critical, .fa.critical { color: var(--mb-bad) !important; }
+.info-blue { color: var(--mb-text-2) !important; }
+.faded { color: #6b7078; }
+.normal { color: var(--mb-text-2); }
+.pve-ceph-status-busy { color: var(--mb-text-2); }
+div.monitor, table.osds td, table.osds tr { border-color: var(--mb-border); }
+
+/* ---------- Notes / markdown --------------------------------------------- */
+.pmx-md code { background-color: var(--mb-well); border-radius: 3px; padding: 1px 4px; }
+.pmx-md pre code { border-left-color: var(--mb-border-strong); }
+.pmx-md tbody td { border-bottom-color: var(--mb-border); }
+.pmx-md tbody tr:nth-of-type(2n) { background-color: #191b1e; }
+.pmx-md tbody tr:hover td { background-color: var(--mb-hover); }
+.pmx-md h1, .pmx-md h2, .pmx-md h3 { font-family: var(--mb-font-head); font-weight: 500; letter-spacing: -0.01em; }
+
+/* ---------- Date picker -------------------------------------------------- */
+.x-datepicker, .x-monthpicker { border: 1px solid var(--mb-border-strong); border-radius: 6px; background-color: var(--mb-surface); }
+.x-datepicker-header, .x-datepicker-footer, .x-monthpicker-buttons { background-color: var(--mb-well); }
+.x-datepicker-column-header { background-color: var(--mb-surface); color: var(--mb-muted); }
+.x-datepicker-selected div.x-datepicker-date, .x-monthpicker-item a.x-monthpicker-selected { background-color: var(--mb-paper); color: var(--mb-ink); border-radius: 3px; }
+div.x-datepicker-date:hover, a.x-monthpicker-item-inner:hover { background-color: var(--mb-selected); border-radius: 3px; }
+.x-datepicker-today .x-datepicker-date { border-color: var(--mb-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .x-btn, .x-tab-default, .x-treelist-row, .x-form-trigger-wrap-default { transition: none; }
+}
