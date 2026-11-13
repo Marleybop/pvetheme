@@ -32,7 +32,7 @@ system setting get Marleybop straight away; anyone else picks it under user menu
 
 | | |
 |---|---|
-| Only add it to the list, leave "Default (auto)" alone | `curl -fsSL https://raw.githubusercontent.com/Marleybop/marleybop-pve-theme/main/dist/install.sh | bash -s -- install --no-default` |\| bash -s -- install --no-default` |
+| Only add it to the list, leave "Default (auto)" alone | `curl -fsSL https://raw.githubusercontent.com/Marleybop/marleybop-pve-theme/main/dist/install.sh \| bash -s -- install --no-default` |
 | See what is installed | `marleybop-pve-theme status` |
 | Put it back by hand after an update | `marleybop-pve-theme reapply` |
 | Remove every change | `marleybop-pve-theme uninstall` |
