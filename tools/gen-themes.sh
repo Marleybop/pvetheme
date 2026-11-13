@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Writes the bundled palettes in src/themes/ from the table below (one row per theme).
-# Edit a row and re-run; hand-made themes for one node go in /etc/marleybop-pve-theme/themes/ instead.
+# Edit a row and re-run; hand-made themes for one node go in /etc/pvetheme/themes/ instead.
 set -euo pipefail
 mkdir -p "$(dirname "$0")/../src/themes"
 cd "$(dirname "$0")/../src/themes"
@@ -43,6 +43,12 @@ t mb-rose-pine-dawn   "Rose Pine Dawn"   light f4ede8 fffaf3 f2e9e1 dfdad9 cecac
 t mb-everforest-dark  "Everforest Dark"  dark  232a2e 2d353b 343f44 3d484d 4f585e d3c6aa c2b99f 9da9a0 a7c080 232a2e 7fbbb3 a7c080 232a2e a7c080 a7c080 dbbc7f e67e80 d0595c a7c080 e69875 7fbbb3 83c092 dbbc7f 859289
 t mb-everforest-light "Everforest Light" light efebd4 fdf6e3 efebd4 e0dcc7 cfcab2 5c6a72 6f7b82 74826f 5f7d0a fdf6e3 2f7fae 5f7d0a fdf6e3 8da101 6b7d00 a37700 d9443f f85552 8da101 f57d26 3a94c5 35a77c dfa000 939f91
 t mb-one-dark         "One Dark"         dark  21252b 282c34 2f343e 3a3f4b 4b5263 d7dae0 abb2bf 8b93a3 61afef 21252b 61afef 61afef 21252b 61afef 98c379 e5c07b e06c75 be5046 61afef c678dd 56b6c2 98c379 d19a66 5c6370
+t mb-catppuccin-frappe "Catppuccin Frappe" dark  292c3c 303446 414559 414559 51576d c6d0f5 b5bfe2 949cbb ca9ee6 232634 8caaee ca9ee6 232634 babbf1 a6d189 e5c890 e78284 d0696b 8caaee f4b8e4 81c8be a6d189 ef9f76 949cbb
+t mb-catppuccin-macchiato "Catppuccin Macchiato" dark 1e2030 24273a 363a4f 363a4f 494d64 cad3f5 b8c0e0 939ab7 c6a0f6 181926 8aadf4 c6a0f6 181926 b7bdf8 a6da95 eed49f ed8796 d86e7e 8aadf4 f5bde6 8bd5ca a6da95 f5a97f 939ab7
+t mb-ayu-dark         "Ayu Dark"         dark  0b0e14 0f131a 1a1f29 1e232e 2d3340 e6e1cf bfbdb6 8a9199 e6b450 0b0e14 59c2ff e6b450 0b0e14 e6b450 aad94c ffb454 f07178 d95757 59c2ff ff8f40 d2a6ff aad94c e6b450 636a72
+t mb-ayu-light        "Ayu Light"        light f3f4f5 fcfcfc eceef0 e3e6e9 cfd3d8 3c4043 5c6166 787b80 f29718 1a1a1a 2f8ad4 f29718 1a1a1a f29718 6c9900 c77f00 d6453f e65050 399ee6 fa8d3e a37acc 86b300 f2ae49 8a9199
+t mb-monokai          "Monokai"          dark  1e1f1c 272822 3e3d32 3e3d32 57584f f8f8f2 cfcfc2 a59f85 a6e22e 1e1f1c 66d9ef a6e22e 1e1f1c e6db74 a6e22e e6db74 f92672 d81e5f 66d9ef f92672 ae81ff a6e22e fd971f 75715e
+t mb-kanagawa         "Kanagawa"         dark  16161d 1f1f28 2a2a37 2a2a37 54546d dcd7ba c8c093 938f80 7e9cd8 16161d 7fb4ca 7e9cd8 16161d 7e9cd8 98bb6c e6c384 ff5d62 c34043 7e9cd8 957fb8 7aa89f 98bb6c ffa066 727169
 
 # follow-the-system entries: key | title | light theme | dark theme
 cat >> index <<'EOF'
@@ -54,6 +60,7 @@ auto mb-solarized-auto|Solarized (auto)|mb-solarized-light|mb-solarized-dark
 auto mb-github-auto|GitHub (auto)|mb-github-light|mb-github-dark
 auto mb-rose-pine-auto|Rose Pine (auto)|mb-rose-pine-dawn|mb-rose-pine
 auto mb-everforest-auto|Everforest (auto)|mb-everforest-light|mb-everforest-dark
+auto mb-ayu-auto|Ayu (auto)|mb-ayu-light|mb-ayu-dark
 EOF
 
 for f in *.theme; do

@@ -4,6 +4,8 @@
  * 2. Recolours the RRD charts, whose series colours are hard-coded in pvemanagerlib.js.
  * 3. Replaces the one-dropdown "Color Theme" dialog with a picker: theme cards with a live
  *    preview, plus the options. If anything in it fails, the stock dialog opens instead.
+ * 4. Shows temperatures and fan speeds on the node Summary when the node provides them
+ *    ("pvetheme sensors on"). This part works with any theme.
  *
  * Parts 1 and 2 do nothing unless one of this engine's themes is active (it sets --mb-theme).
  * install.sh prepends "window.MarleybopThemes = {version, themes}" to this file.
@@ -13,7 +15,7 @@
     if (!window.Ext || !window.getComputedStyle) {
         return;
     }
-    var MB = window.MarleybopThemes || { version: '0', themes: [] };
+    var MB = window.MarleybopThemes || { version: '0', themes: [], defaults: {} };
     var STORE_KEY = 'marleybop-theme-options';
     var root = document.documentElement;
 
@@ -41,13 +43,19 @@
     };
     var RADII = { sharp: ['0px', '0px'], soft: ['4px', '8px'], round: ['8px', '12px'] };
 
+    // the node's starting options (pvetheme options ...), which a browser's own choices override
+    var nodeDefaults = function () {
+        return Ext.apply({}, MB.defaults || {});
+    };
     var loadOptions = function () {
+        var own = {};
         try {
             var o = JSON.parse(window.localStorage.getItem(STORE_KEY) || '{}');
-            return o && typeof o === 'object' ? o : {};
+            own = o && typeof o === 'object' ? o : {};
         } catch (e) {
-            return {};
+            own = {};
         }
+        return Ext.apply(nodeDefaults(), own);
     };
     var saveOptions = function (o) {
         try {
@@ -190,7 +198,7 @@
             return d;
         };
         // "Default" first: what a browser gets when it has not picked anything. The node's admin
-        // may have pointed that at one of these themes (marleybop-pve-theme default <name>).
+        // may have pointed that at one of these themes (pvetheme default <name>).
         var def = themeByKey(MB.def);
         if (def) {
             push('__default__', Ext.apply(own(def), { title: 'Default: ' + def.title }));
@@ -301,7 +309,7 @@
                 injectDialogCss();
                 // options0 is set when Reset reopens the dialog: start clean, Cancel still returns to what was saved
                 me.saved = me.options0 || loadOptions();
-                me.options = me.options0 ? {} : Ext.apply({}, me.saved);
+                me.options = me.options0 ? nodeDefaults() : Ext.apply({}, me.saved);
                 var cookie = Ext.util.Cookies.get(me.cookieName);
                 me.cards = buildCards();
                 me.themeKey = '__default__';
@@ -467,7 +475,7 @@
                             me.applied = true; // keep this close from restoring the old options
                             me.close();
                             endPreview();
-                            applyOptions({}, me.startKey);
+                            applyOptions(nodeDefaults(), me.startKey);
                             Ext.create('Marleybop.window.Appearance', { cookieName: me.cookieName, options0: saved }).show();
                         },
                     },
@@ -549,7 +557,115 @@
         });
     };
 
+    /* ---------- temperatures on the node Summary --------------------------- */
+
+    var CHIPS = [
+        [/^(coretemp|k10temp|zenpower|cpu_thermal)/, 'CPU'], [/^nvme/, 'NVMe'], [/^pch_/, 'Chipset'],
+        [/^acpitz/, 'Board'], [/^drivetemp/, 'Disk'], [/^(amdgpu|nouveau|radeon|nvidia)/, 'GPU'], [/^iwlwifi/, 'Wi-Fi'],
+    ];
+    var chipName = function (chip) {
+        for (var i = 0; i < CHIPS.length; i++) {
+            if (CHIPS[i][0].test(chip)) {
+                return CHIPS[i][1];
+            }
+        }
+        return chip;
+    };
+    // One reading per chip: the CPU package or drive composite when there is one, else the hottest.
+    var sensorHtml = function (list) {
+        if (!Ext.isArray(list) || !list.length) {
+            return '';
+        }
+        var groups = {};
+        var order = [];
+        list.forEach(function (s) {
+            if ((s.kind !== 'temp' && s.kind !== 'fan') || !Ext.isNumeric(s.value) || (s.kind === 'fan' && s.value <= 0)) {
+                return;
+            }
+            var name = chipName(String(s.chip)) + (s.kind === 'fan' ? ' fan' : '');
+            var g = groups[name];
+            if (!g) {
+                g = groups[name] = { name: name, kind: s.kind, value: -Infinity, all: [] };
+                order.push(g);
+            }
+            g.all.push((s.label || s.kind + s.index) + ': ' + Math.round(s.value) + (s.kind === 'fan' ? ' RPM' : ' °C'));
+            var main = /^(Package id|Composite|Tctl|Tdie)/i.test(s.label || '');
+            if ((main && !g.main) || (!g.main && s.value > g.value)) {
+                g.main = g.main || main;
+                g.value = s.value;
+                g.max = s.max;
+                g.crit = s.crit;
+            }
+        });
+        return order.map(function (g) {
+            var cls = '';
+            if (g.kind === 'temp') {
+                // limits above 150 are placeholders some drives report
+                var crit = g.crit > 0 && g.crit < 150 ? g.crit : 95;
+                var high = g.max > 0 && g.max < 150 ? g.max : 80;
+                cls = g.value >= crit ? 'critical' : g.value >= high ? 'warning' : '';
+            }
+            return '<span class="mb-sensor ' + cls + '" data-qtip="' + esc(g.all.join('<br>')) + '">' +
+                esc(g.name) + ' <b>' + Math.round(g.value) + (g.kind === 'fan' ? ' RPM' : ' °C') + '</b></span>';
+        }).join(' &nbsp;·&nbsp; ');
+    };
+    var defineSensors = function () {
+        Ext.define('Marleybop.override.NodeStatus', {
+            override: 'PVE.node.StatusView',
+            initComponent: function () {
+                var me = this;
+                // items lives on the class: copy it before adding the row, above "CPU(s)"
+                var items = (me.items || []).slice();
+                var at = items.length;
+                items.forEach(function (it, i) {
+                    if (it && it.itemId === 'cpus') {
+                        at = i;
+                    }
+                });
+                items.splice(at, 0, {
+                    itemId: 'mbsensors',
+                    colspan: 2,
+                    printBar: false,
+                    hidden: true,
+                    iconCls: 'fa fa-fw fa-thermometer-half',
+                    title: gettext('Temperatures'),
+                    textField: 'marleybop-sensors',
+                    renderer: sensorHtml,
+                    value: '',
+                });
+                me.items = items;
+                me.mbHeight = me.height;
+                me.callParent(arguments);
+            },
+            updateValues: function () {
+                var me = this;
+                me.callParent(arguments);
+                var row = me.getComponent('mbsensors');
+                if (!row) {
+                    return;
+                }
+                var v = me.getRecordValue('marleybop-sensors');
+                var show = Ext.isArray(v) && v.length > 0;
+                if (show === row.hidden) {
+                    row.setHidden(!show);
+                    if (Ext.isNumber(me.mbHeight)) {
+                        me.setHeight(me.mbHeight + (show ? 28 : 0));
+                    }
+                }
+            },
+        });
+    };
+
     Ext.onReady(function () {
+        try {
+            if (Ext.ClassManager.get('PVE.node.StatusView')) {
+                defineSensors();
+            }
+        } catch (e) {
+            if (window.console) {
+                console.warn('Marleybop themes: temperatures not available', e);
+            }
+        }
         try {
             if (Ext.ClassManager.get('Proxmox.widget.RRDChart')) {
                 Ext.define('Marleybop.override.RRDChart', {

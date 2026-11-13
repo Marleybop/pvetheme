@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
-# Marleybop theme engine for Proxmox VE: builds, applies, re-applies and removes the themes on one node.
-# Installed as /usr/local/sbin/marleybop-pve-theme by install.sh. Run with no arguments for help.
+# pvetheme: Marleybop themes for Proxmox VE. Builds, applies, re-applies and removes the themes on one node.
+# Installed as /usr/local/sbin/pvetheme by install.sh. Run with no arguments for help.
 set -euo pipefail
 
 SHARE=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 VERSION=${MB_VERSION:-$(cat "$SHARE/VERSION" 2>/dev/null || echo dev)}
-MARK='marleybop-pve-theme'
+MARK='marleybop-pvetheme'
+REPO_RAW='https://raw.githubusercontent.com/Marleybop/pvetheme/main'
 
 WT=${MB_WT_DIR:-/usr/share/javascript/proxmox-widget-toolkit}
 THEMES=$WT/themes
 LIB=$WT/proxmoxlib.js
 STOCK=${MB_STOCK:-$THEMES/theme-proxmox-dark.css}
 TPL=${MB_TPL:-/usr/share/pve-manager/index.html.tpl}
+NODES=${MB_NODES_PM:-/usr/share/perl5/PVE/API2/Nodes.pm}
 JS=$THEMES/marleybop-theme.js
-ETC=${MB_ETC_DIR:-/etc/marleybop-pve-theme}
+ETC=${MB_ETC_DIR:-/etc/pvetheme}
 CUSTOM=$ETC/themes
-HOOK=${MB_APT_HOOK:-/etc/apt/apt.conf.d/99marleybop-pve-theme}
-BIN=${MB_BIN:-/usr/local/sbin/marleybop-pve-theme}
+HOOK=${MB_APT_HOOK:-/etc/apt/apt.conf.d/99pvetheme}
+BIN=${MB_BIN:-/usr/local/sbin/pvetheme}
 
 # the Proxmox server only accepts theme names made of lowercase segments of at most 10 letters
 KEY_RE='^[a-z]{1,10}(-[a-z]{1,10}){0,5}$'
@@ -28,7 +30,8 @@ ok()   { say "  ok    $*"; }
 warn() { printf '  warn  %s\n' "$*" >&2; }
 die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
 
-need_root() { [ -n "${MB_TEST:-}" ] || [ "$(id -u)" = 0 ] || die "run this as root"; }
+is_root() { [ -n "${MB_TEST:-}" ] || [ "$(id -u)" = 0 ]; }
+need_root() { is_root || die "run this as root"; }
 need_pve() {
     [ -f "$TPL" ] && [ -f "$LIB" ] || die "Proxmox VE web UI files not found ($TPL, $LIB). This is for Proxmox VE 8 and 9."
     [ -f "$STOCK" ] || die "$STOCK not found: the stock dark theme is the base every theme is built from (needs Proxmox VE 7.4 or newer)."
@@ -84,11 +87,38 @@ auto_entries() {
     return 0
 }
 
+# ---------- node-wide options ------------------------------------------------
+# $ETC/options holds key=value lines: the starting point for every browser (each can override).
+
+opt_valid() { # opt_valid <key> <value>
+    case "$1" in
+        accent)   [[ $2 =~ ^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$ ]] ;;
+        radius)   [[ $2 =~ ^(soft|sharp|round)$ ]] ;;
+        density)  [[ $2 =~ ^(comfortable|compact)$ ]] ;;
+        font)     [[ $2 =~ ^(inter|system|mono|custom)$ ]] ;;
+        fontName) [[ $2 =~ ^[A-Za-z0-9\ ._-]{1,60}$ ]] ;;
+        *) return 1 ;;
+    esac
+}
+options_json() {
+    local k v out='' sep=''
+    [ -f "$ETC/options" ] || { printf '{}'; return 0; }
+    while IFS='=' read -r k v || [ -n "$k" ]; do
+        v=${v%$'\r'}
+        opt_valid "$k" "$v" || continue
+        out+="$sep\"$k\":\"$v\""; sep=','
+    done < "$ETC/options"
+    printf '{%s}' "$out"
+}
+# The font file given to "pvetheme font", if any: prints its path.
+font_file() { local f; for f in "$ETC"/userfont.*; do if [ -f "$f" ]; then echo "$f"; return 0; fi; done; return 0; }
+font_family() { [ -f "$ETC/options" ] || return 0; sed -n 's/^fontName=//p' "$ETC/options" | head -n 1; }
+
 # Writes one theme's stylesheet to stdout. Needs T loaded.
 emit_theme() { # emit_theme <key>
-    local key=$1 c
+    local key=$1 c ff
     printf '/*!%s*/\n' "${T[name]}"
-    printf '/* %s %s: built on this node from theme-proxmox-dark.css, the Marleybop layer and the "%s" palette. Do not edit; run "marleybop-pve-theme reapply". */\n' "$MARK" "$VERSION" "$key"
+    printf '/* %s %s: built on this node from theme-proxmox-dark.css, the Marleybop layer and the "%s" palette. Do not edit; run "pvetheme reapply". */\n' "$MARK" "$VERSION" "$key"
     # 1. the stock dark theme, one rule per line, colours mapped to variables.
     #    Light themes drop its icon-inverting filters; everything else applies to both.
     if [ "${T[mode]}" = light ]; then
@@ -118,6 +148,11 @@ emit_theme() { # emit_theme <key>
         printf '  --mb-mask: rgba(0, 0, 0, 0.6);\n  --mb-shadow: 0 18px 50px 4px rgba(0, 0, 0, 0.6);\n  color-scheme: dark;\n'
     fi
     printf '}\n'
+    # 4. the node's own font file, when one was given to "pvetheme font"
+    ff=$(font_file)
+    if [ -n "$ff" ] && [ -n "$(font_family)" ]; then
+        printf '@font-face { font-family: "%s"; font-weight: 100 900; font-display: swap; src: url("marleybop-userfont.%s?v=%s"); }\n' "$(font_family)" "${ff##*.}" "$VERSION"
+    fi
 }
 
 # Removes every stylesheet this tool generated (found by its marker line), leaving other themes alone.
@@ -127,8 +162,6 @@ remove_generated() {
         [ -f "$f" ] || continue
         if head -n 3 "$f" | grep -q "$MARK"; then rm -f "$f"; fi
     done
-    # version 1 wrote this file without the marker on a line of its own
-    [ -f "$THEMES/theme-marleybop.css" ] && head -n 2 "$THEMES/theme-marleybop.css" | grep -q 'Marleybop theme' && rm -f "$THEMES/theme-marleybop.css"
     return 0
 }
 
@@ -167,20 +200,23 @@ build_all() {
 }
 
 install_assets() {
-    local f tmp
+    local f tmp ff
     for f in "$SHARE"/fonts/*.woff2; do
         tmp=$(mktemp); cat "$f" > "$tmp"; put "$tmp" "$THEMES/$(basename "$f")" || true
     done
+    rm -f "$THEMES"/marleybop-userfont.*
+    ff=$(font_file)
+    if [ -n "$ff" ]; then tmp=$(mktemp); cat "$ff" > "$tmp"; put "$tmp" "$THEMES/marleybop-userfont.${ff##*.}" || true; fi
     tmp=$(mktemp)
     {
         printf '/* %s %s: generated, do not edit. */\n' "$MARK" "$VERSION"
-        printf 'window.MarleybopThemes = { version: "%s", def: "%s", themes: [%s] };\n' "$VERSION" "$(get_default)" "$MANIFEST"
+        printf 'window.MarleybopThemes = { version: "%s", def: "%s", defaults: %s, themes: [%s] };\n' "$VERSION" "$(get_default)" "$(options_json)" "$MANIFEST"
         cat "$SHARE/marleybop-theme.js"
     } > "$tmp"
     put "$tmp" "$JS" || true
 }
 
-# ---------- the two Proxmox files we edit -----------------------------------
+# ---------- the Proxmox files we edit ---------------------------------------
 
 lib_patched() { grep -q "// $MARK\$" "$LIB"; }
 # Puts our entries at the top of theme_map; returns 1 when the file already had exactly these.
@@ -203,11 +239,7 @@ unpatch_lib() {
 }
 
 # Default theme for browsers that have not chosen one: a theme key, or "none".
-get_default() {
-    local d; d=$(cat "$ETC/default" 2>/dev/null || echo marleybop-auto)
-    case "$d" in 1) d=marleybop-auto ;; 0) d=none ;; esac   # values written by version 1
-    echo "$d"
-}
+get_default() { cat "$ETC/default" 2>/dev/null || echo marleybop-auto; }
 
 # The template gets three small edits, each one undone by clean_tpl:
 #   1. a <script> line for the helper, after pvemanagerlib.js
@@ -217,8 +249,7 @@ get_default() {
 clean_tpl() { # stdin -> stdout
     sed -e "/<!-- $MARK -->/d" \
         -e '/\/pwt\/themes\/theme-/s/\(\[% wtversion %\]\)-mb[0-9A-Za-z.]*/\1/' \
-        -e '/data-mb-media=/{s/ data-mb-media="\([^"]*\)"/ media="\1"/;s/theme-[a-z-]*\.css/theme-proxmox-dark.css/}' \
-        -e '/prefers-color-scheme: dark/s/theme-[a-z-]*\.css/theme-proxmox-dark.css/'
+        -e '/data-mb-media=/{s/ data-mb-media="\([^"]*\)"/ media="\1"/;s/theme-[a-z-]*\.css/theme-proxmox-dark.css/}'
 }
 patch_tpl() {
     grep -q 'pvemanagerlib\.js' "$TPL" || die "could not find pvemanagerlib.js in $TPL; this pve-manager version is not supported. Nothing was changed in that file."
@@ -232,7 +263,7 @@ patch_tpl() {
     if [ "$def" != none ]; then
         case "$KEYS" in
             *" $def "*) sed -i "/media=\"(prefers-color-scheme: dark)\"/{s/ media=\"\([^\"]*\)\"/ data-mb-media=\"\1\"/;s/theme-proxmox-dark\.css/theme-$def.css/}" "$tmp" ;;
-            *) warn "default theme \"$def\" does not exist; leaving Proxmox's default. Fix with: marleybop-pve-theme default <name>" ;;
+            *) warn "default theme \"$def\" does not exist; leaving Proxmox's default. Fix with: pvetheme default <name>" ;;
         esac
     fi
     grep -q "<!-- $MARK -->" "$tmp" || { rm -f "$tmp"; die "patching $TPL failed; file left unchanged."; }
@@ -243,6 +274,42 @@ unpatch_tpl() {
     local tmp; tmp=$(mktemp)
     clean_tpl < "$TPL" > "$tmp"
     put "$tmp" "$TPL"
+}
+
+# Temperatures on the node Summary: a block of Perl in the node status API (off unless asked for).
+sensors_wanted() { [ "$(cat "$ETC/sensors" 2>/dev/null)" = on ]; }
+nodes_patched() { [ -f "$NODES" ] && grep -q "# $MARK sensors\$" "$NODES"; }
+reload_api() {
+    [ -n "${MB_NO_RELOAD:-}" ] && return 0
+    systemctl reload pvedaemon 2>/dev/null || systemctl restart pvedaemon 2>/dev/null || true
+    systemctl reload pveproxy 2>/dev/null || systemctl restart pveproxy 2>/dev/null || true
+}
+# Returns 0 when the file was changed.
+patch_nodes() {
+    nodes_patched && return 1
+    [ -f "$NODES" ] || { warn "$NODES not found; temperatures not enabled"; return 1; }
+    grep -q '^[[:space:]]*my \$dinfo = df(' "$NODES" || { warn "this pve-manager version has a different node status code; temperatures not enabled, nothing changed"; return 1; }
+    local tmp; tmp=$(mktemp --suffix=.pm)
+    awk -v snippet="$SHARE/sensors.pl" '
+        !done && /^[[:space:]]*my \$dinfo = df\(/ { while ((getline line < snippet) > 0) print line; print ""; done = 1 }
+        { print }' "$NODES" > "$tmp"
+    # never install a file Perl cannot compile
+    if [ -z "${MB_TEST:-}" ] && ! perl -I/usr/share/perl5 -c "$tmp" >/dev/null 2>&1; then
+        rm -f "$tmp"; warn "the patched node status code did not compile; temperatures not enabled, nothing changed"; return 1
+    fi
+    mkdir -p "$ETC/backup"; [ -f "$ETC/backup/Nodes.pm" ] || cp -p "$NODES" "$ETC/backup/Nodes.pm"
+    put "$tmp" "$NODES"
+}
+unpatch_nodes() {
+    nodes_patched || return 1
+    local tmp; tmp=$(mktemp)
+    # the block and the blank line added after it
+    awk -v s="# $MARK sensors" -v e="# $MARK sensors END" '
+        skip == 0 && index($0, s) && !index($0, e) { skip = 1; next }
+        skip == 1 { if (index($0, e)) skip = 2; next }
+        skip == 2 { skip = 0; if ($0 == "") next }
+        { print }' "$NODES" > "$tmp"
+    put "$tmp" "$NODES"
 }
 
 backup_once() { # keep one untouched copy of each file we edit, per package version
@@ -261,7 +328,7 @@ backup_once() { # keep one untouched copy of each file we edit, per package vers
 install_hook() {
     local tmp; tmp=$(mktemp)
     cat > "$tmp" <<EOF
-// Marleybop themes for Proxmox VE: put the themes back after a Proxmox package update replaces the patched files.
+// pvetheme (Marleybop themes for Proxmox VE): put the themes back after a Proxmox package update replaces the patched files.
 DPkg::Post-Invoke { "if [ -x $BIN ]; then $BIN reapply --quiet || true; fi"; };
 EOF
     put "$tmp" "$HOOK" || true
@@ -275,18 +342,24 @@ reload_ui() {
     systemctl reload pveproxy 2>/dev/null || systemctl restart pveproxy 2>/dev/null || warn "could not reload pveproxy; run: systemctl restart pveproxy"
 }
 
-# Does everything; sets CHANGED=1 when one of the two Proxmox files had to be edited.
-CHANGED=0
+# Does everything; sets CHANGED=1 when one of the Proxmox files had to be edited.
+CHANGED=0; API_CHANGED=0
 apply_all() {
-    CHANGED=0
+    CHANGED=0; API_CHANGED=0
     mkdir -p "$ETC" "$CUSTOM"
     backup_once
     build_all
     install_assets
     if patch_lib; then CHANGED=1; fi
     if patch_tpl; then CHANGED=1; fi
+    if sensors_wanted; then
+        if patch_nodes; then API_CHANGED=1; fi
+    else
+        if unpatch_nodes; then API_CHANGED=1; fi
+    fi
     install_hook
 }
+reload_changed() { if [ "$API_CHANGED" = 1 ]; then reload_api; else reload_ui; fi; }
 
 # ---------- commands ---------------------------------------------------------
 
@@ -296,64 +369,67 @@ cmd_install() {
     while [ $# -gt 0 ]; do
         case "$1" in
             --no-default) echo none > "$ETC/default" ;;
-            --default) shift; [[ ${1:-} =~ $KEY_RE ]] || die "--default needs a theme name (see: marleybop-pve-theme list)"; echo "$1" > "$ETC/default" ;;
+            --default) shift; [[ ${1:-} =~ $KEY_RE ]] || die "--default needs a theme name (see: pvetheme list)"; echo "$1" > "$ETC/default" ;;
             '') ;;
             *) die "unknown option: $1" ;;
         esac
         shift || true
     done
-    say "Marleybop themes $VERSION for Proxmox VE"
+    say "pvetheme $VERSION: Marleybop themes for Proxmox VE"
     apply_all
     ok "$BUILT themes built from this node's Proxmox Dark, plus the follow-the-system entries"
     ok "fonts and helper script copied"
     ok "themes added to the Color Theme list"
     local def; def=$(get_default)
     if [ "$def" = none ]; then ok "page template updated"
-    else ok "page template updated; browsers on \"Default (auto)\" get $def"; fi
+    else ok "page template updated; browsers that have not picked a theme get $def"; fi
     ok "apt hook installed (themes return by themselves after Proxmox updates)"
-    reload_ui; [ -n "${MB_NO_RELOAD:-}" ] || ok "web UI reloaded"
+    reload_changed; [ -n "${MB_NO_RELOAD:-}" ] || ok "web UI reloaded"
     say ""
-    say "Done. In the web UI: user menu (top right) > Color Theme."
+    say "Done. In the web UI: your user name (top right) > Color Theme."
     say "If the old look stays, hard-refresh the browser once (Ctrl+Shift+R)."
-    say "More: marleybop-pve-theme help"
+    say "More: pvetheme help"
 }
 
 cmd_reapply() {
-    [ -n "${MB_TEST:-}" ] || [ "$(id -u)" = 0 ] || exit 0
+    is_root || exit 0
     # during a package removal or a half-finished upgrade the files may be missing: nothing to do
     [ -f "$TPL" ] && [ -f "$LIB" ] && [ -f "$STOCK" ] || exit 0
     apply_all
-    if [ "$CHANGED" = 1 ]; then reload_ui; say "Marleybop themes re-applied ($BUILT themes)."; else say "Marleybop themes are in place ($BUILT themes)."; fi
+    if [ "$CHANGED" = 1 ] || [ "$API_CHANGED" = 1 ]; then reload_changed; say "Themes re-applied ($BUILT themes)."; else say "Themes are in place ($BUILT themes)."; fi
 }
 
 cmd_uninstall() {
     need_root
-    say "Removing the Marleybop themes"
+    say "Removing pvetheme"
     unpatch_lib; ok "removed from the Color Theme list"
     unpatch_tpl || true; ok "page template restored"
+    if unpatch_nodes; then API_CHANGED=1; ok "temperature readout removed from the node status code"; fi
     remove_generated
-    rm -f "$JS" "$THEMES"/marleybop-*.woff2; ok "theme files removed"
+    rm -f "$JS" "$THEMES"/marleybop-*.woff2 "$THEMES"/marleybop-userfont.*; ok "theme files removed"
     rm -f "$HOOK" "$BIN"; ok "apt hook removed"
     if ls "$CUSTOM"/*.theme >/dev/null 2>&1; then
-        rm -rf "$ETC/backup" "$ETC/default"
+        find "$ETC" -mindepth 1 -maxdepth 1 ! -name themes -exec rm -rf {} +
         ok "your own themes kept in $CUSTOM"
     else
         rm -rf "$ETC"
     fi
-    reload_ui; [ -n "${MB_NO_RELOAD:-}" ] || ok "web UI reloaded"
-    case "$SHARE" in */marleybop-pve-theme) rm -rf "$SHARE" ;; esac
+    reload_changed; [ -n "${MB_NO_RELOAD:-}" ] || ok "web UI reloaded"
+    case "$SHARE" in */pvetheme) rm -rf "$SHARE" ;; esac
     say ""
     say "Done. Browsers that had one of these themes selected fall back to the default theme."
 }
 
 cmd_status() {
     local s n
-    say "Marleybop themes $VERSION"
+    say "pvetheme $VERSION"
     n=0; for s in "$THEMES"/theme-*.css; do [ -f "$s" ] && head -n 3 "$s" | grep -q "$MARK" && n=$((n + 1)); done
     say "  stylesheets       $n"
     s=no; [ -f "$LIB" ] && lib_patched && s=yes; say "  in theme list     $s"
     s=no; [ -f "$TPL" ] && grep -q "<!-- $MARK -->" "$TPL" && s=yes; say "  template patched  $s"
     say "  default theme     $(get_default)"
+    say "  node options      $(options_json)"
+    s=off; nodes_patched && s=on; say "  temperatures      $s"
     s=no; [ -f "$HOOK" ] && s=yes; say "  apt hook          $s"
     say "  pve-manager       $(dpkg-query -W -f='${Version}' pve-manager 2>/dev/null || echo '?')"
     say "  widget-toolkit    $(dpkg-query -W -f='${Version}' proxmox-widget-toolkit 2>/dev/null || echo '?')"
@@ -362,13 +438,13 @@ cmd_status() {
 cmd_list() {
     local key file entry title light dark def
     def=$(get_default)
-    printf '%-22s %-6s %s\n' NAME MODE TITLE
+    printf '%-24s %-6s %s\n' NAME MODE TITLE
     while read -r key file; do
         load_theme "$file" 2>/dev/null || continue
-        printf '%-22s %-6s %s%s%s\n' "$key" "${T[mode]}" "${T[name]}" "$([ "$file" = "$CUSTOM/$key.theme" ] && echo '  (yours)')" "$([ "$key" = "$def" ] && echo '  (default)')"
+        printf '%-24s %-6s %s%s%s\n' "$key" "${T[mode]}" "${T[name]}" "$([ "$file" = "$CUSTOM/$key.theme" ] && echo '  (yours)')" "$([ "$key" = "$def" ] && echo '  (default)')"
     done < <(theme_files 2>/dev/null)
     while IFS='|' read -r entry title light dark; do
-        [ -n "$entry" ] && printf '%-22s %-6s %s%s\n' "$entry" auto "$title" "$([ "$entry" = "$def" ] && echo '  (default)')"
+        [ -n "$entry" ] && printf '%-24s %-6s %s%s\n' "$entry" auto "$title" "$([ "$entry" = "$def" ] && echo '  (default)')"
     done < <(auto_entries)
 }
 
@@ -378,31 +454,117 @@ cmd_default() {
     [ -n "$want" ] || { say "default theme: $(get_default)"; return 0; }
     if [ "$want" != none ]; then
         [[ $want =~ $KEY_RE ]] || die "not a theme name: $want"
-        cmd_list | awk 'NR>1 {print $1}' | grep -qx "$want" || die "no such theme: $want (see: marleybop-pve-theme list)"
+        cmd_list > "$ETC/.list" 2>/dev/null || true
+        awk 'NR>1 {print $1}' "$ETC/.list" | grep -qx "$want" || { rm -f "$ETC/.list"; die "no such theme: $want (see: pvetheme list)"; }
+        rm -f "$ETC/.list"
     fi
     mkdir -p "$ETC"; echo "$want" > "$ETC/default"
-    apply_all; reload_ui
-    if [ "$want" = none ]; then say "Browsers on \"Default (auto)\" get Proxmox's own themes again."
-    else say "Browsers on \"Default (auto)\" now get $want. Anyone who picked a theme keeps their choice."; fi
+    apply_all; reload_changed
+    if [ "$want" = none ]; then say "Browsers that have not picked a theme get Proxmox's own themes again."
+    else say "Browsers that have not picked a theme now get $want. Anyone who picked one keeps their choice."; fi
 }
 
 cmd_new() {
     need_root
     local key=${1:-} from=${2:-marleybop} src
-    [[ $key =~ $KEY_RE ]] || die "usage: marleybop-pve-theme new <name> [copy-from]   (name: lowercase words of up to 10 letters joined by '-')"
+    [[ $key =~ $KEY_RE ]] || die "usage: pvetheme new <name> [copy-from]   (name: lowercase words of up to 10 letters joined by '-')"
     [ -f "$SHARE/themes/$key.theme" ] && die "a bundled theme is already called $key"
     src=$SHARE/themes/$from.theme; [ -f "$src" ] || src=$CUSTOM/$from.theme
     [ -f "$src" ] || die "no such theme to copy from: $from"
     mkdir -p "$CUSTOM"
     [ -f "$CUSTOM/$key.theme" ] && die "$CUSTOM/$key.theme already exists"
     {
-        echo "# Your own theme. Edit the colours, then run: marleybop-pve-theme reapply"
+        echo "# Your own theme. Edit the colours, then run: pvetheme reapply"
         echo "# bg = page behind the panels, surface = panels, raised = buttons and chips,"
         echo "# sel/on_sel = selected tab and checked box, bar = usage bars and gauges."
         sed "s/^name=.*/name=$key/" "$src"
     } > "$CUSTOM/$key.theme"
     say "Created $CUSTOM/$key.theme (copied from $from)."
-    say "Edit it, then run: marleybop-pve-theme reapply"
+    say "Edit it, then run: pvetheme reapply"
+}
+
+# pvetheme options [key=value ... | reset]: the starting options for every browser on this node
+cmd_options() {
+    need_root; need_pve
+    [ $# -gt 0 ] || { say "node options: $(options_json)"; say "set with: pvetheme options accent=#3b82f6 radius=round density=compact font=system   (or: reset)"; return 0; }
+    mkdir -p "$ETC"
+    local pair k v tmp
+    if [ "$1" = reset ]; then rm -f "$ETC/options" "$ETC"/userfont.*
+    else
+        for pair in "$@"; do
+            k=${pair%%=*}; v=${pair#*=}
+            opt_valid "$k" "$v" || die "not a valid option: $pair   (accent=#rrggbb radius=soft|sharp|round density=comfortable|compact font=inter|system|mono)"
+            tmp=$(mktemp); { grep -v "^$k=" "$ETC/options" 2>/dev/null || true; echo "$k=$v"; } > "$tmp"; cat "$tmp" > "$ETC/options"; rm -f "$tmp"
+        done
+    fi
+    apply_all; reload_changed
+    say "Node options are now: $(options_json)"
+    say "Browsers where someone set their own options keep those."
+}
+
+# pvetheme font <family> [file] | none: a font for every browser on this node
+cmd_font() {
+    need_root; need_pve
+    local family=${1:-} file=${2:-} ext
+    [ -n "$family" ] || { say "font: $(font_family || true)$(f=$(font_file); [ -n "$f" ] && echo "  (file: $f)")"; say "set with: pvetheme font \"Family Name\" [file.woff2|.woff|.ttf]   (or: none)"; return 0; }
+    mkdir -p "$ETC"
+    rm -f "$ETC"/userfont.*
+    if [ "$family" = none ]; then
+        if [ -f "$ETC/options" ]; then sed -i '/^font=/d;/^fontName=/d' "$ETC/options"; fi
+    else
+        opt_valid fontName "$family" || die "font family may only have letters, digits, spaces and ._-"
+        if [ -n "$file" ]; then
+            [ -f "$file" ] || die "no such file: $file"
+            ext=${file##*.}; ext=${ext,,}
+            case "$ext" in woff2|woff|ttf) ;; *) die "font file must be .woff2, .woff or .ttf" ;; esac
+            [ "$(wc -c < "$file")" -le 4194304 ] || die "font file is larger than 4 MB"
+            cp "$file" "$ETC/userfont.$ext"
+        fi
+        { grep -v -e '^font=' -e '^fontName=' "$ETC/options" 2>/dev/null || true; echo "font=custom"; echo "fontName=$family"; } > "$ETC/options.new"
+        mv "$ETC/options.new" "$ETC/options"
+    fi
+    apply_all; reload_changed
+    if [ "$family" = none ]; then say "Font back to the themes' own (Inter)."
+    elif [ -n "$file" ]; then say "Font set to \"$family\", served from this node."
+    else say "Font set to \"$family\". It shows on computers that have that font installed."; fi
+}
+
+cmd_sensors() {
+    need_root; need_pve
+    case "${1:-status}" in
+        on)
+            ls /sys/class/hwmon/hwmon*/temp*_input >/dev/null 2>&1 || [ -n "${MB_TEST:-}" ] || die "this machine exposes no temperature sensors (/sys/class/hwmon is empty)"
+            mkdir -p "$ETC"; echo on > "$ETC/sensors"
+            apply_all
+            nodes_patched || { echo off > "$ETC/sensors"; die "temperatures could not be enabled; nothing was changed"; }
+            reload_api
+            if [ -z "${MB_TEST:-}" ] && ! pvesh get "/nodes/$(hostname -s)/status" --output-format json 2>/dev/null | grep -q 'marleybop-sensors'; then
+                echo off > "$ETC/sensors"; unpatch_nodes || true; reload_api
+                die "the node status API did not answer with temperatures after the change; it was undone"
+            fi
+            say "Temperatures are on: open a node's Summary (hard-refresh the browser once)."
+            ;;
+        off)
+            mkdir -p "$ETC"; echo off > "$ETC/sensors"
+            apply_all; reload_changed
+            say "Temperatures are off; the node status code is back to stock."
+            ;;
+        status) if nodes_patched; then say "temperatures: on"; else say "temperatures: off   (turn on with: pvetheme sensors on)"; fi ;;
+        *) die "usage: pvetheme sensors on|off|status" ;;
+    esac
+}
+
+cmd_check() {
+    local remote
+    remote=$(curl -fsSL --max-time 15 "$REPO_RAW/VERSION" 2>/dev/null | tr -d ' \r\n') || die "could not reach GitHub"
+    if [ "$remote" = "$VERSION" ]; then say "pvetheme $VERSION is the newest version."
+    else say "pvetheme $remote is available (installed: $VERSION). Update with: pvetheme update"; fi
+}
+cmd_update() {
+    need_root
+    local tmp; tmp=$(mktemp)
+    curl -fsSL --max-time 60 "$REPO_RAW/dist/install.sh" -o "$tmp" || { rm -f "$tmp"; die "could not download the installer"; }
+    bash "$tmp" install; rm -f "$tmp"
 }
 
 # Development: build every theme and the helper into $MB_WT_DIR/themes from $MB_STOCK, touching nothing else.
@@ -416,19 +578,20 @@ cmd_build_dev() {
 
 usage() {
     cat <<EOF
-Marleybop themes $VERSION for Proxmox VE
+pvetheme $VERSION: Marleybop themes for Proxmox VE
 
-  marleybop-pve-theme list                      the themes, and which one is the default
-  marleybop-pve-theme default [<name>|none]     theme for browsers that have not picked one
-  marleybop-pve-theme new <name> [copy-from]    start your own theme in $CUSTOM
-  marleybop-pve-theme reapply                   rebuild everything (after editing a theme; the apt hook
-                                                runs this after Proxmox updates)
-  marleybop-pve-theme status                    show what is installed
-  marleybop-pve-theme install [--default <name> | --no-default]
-  marleybop-pve-theme uninstall                 remove every change
+Everyone picks their theme in the web UI: your user name (top right) > Color Theme.
 
-Each person picks their theme in the web UI: user menu > Color Theme. That dialog also has the
-accent colour, corner, density and font options, which are saved per browser.
+  pvetheme list                      the themes, and which one is the default
+  pvetheme default [<name>|none]     theme for browsers that have not picked one
+  pvetheme options [key=value ...]   starting accent, corners, density and font for every browser
+  pvetheme font "<family>" [file]    a font for every browser; with a file it is served from this node
+  pvetheme sensors on|off            temperatures and fans on the node Summary
+  pvetheme new <name> [copy-from]    start your own theme in $CUSTOM
+  pvetheme reapply                   rebuild everything (after editing a theme)
+  pvetheme status                    what is installed
+  pvetheme check | update            look for, or install, a newer version
+  pvetheme uninstall                 remove every change
 EOF
 }
 
@@ -442,7 +605,12 @@ case "$cmd" in
     status)    cmd_status ;;
     list)      cmd_list ;;
     default)   cmd_default "$@" ;;
+    options)   cmd_options "$@" ;;
+    font)      cmd_font "$@" ;;
+    sensors)   cmd_sensors "$@" ;;
     new)       cmd_new "$@" ;;
+    check)     cmd_check ;;
+    update)    cmd_update ;;
     build-dev) cmd_build_dev ;;
     help|-h|--help) usage ;;
     *) usage; exit 1 ;;

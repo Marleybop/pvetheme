@@ -18,6 +18,12 @@ theme mb-rose-pine-dawn
 theme mb-everforest-dark
 theme mb-everforest-light
 theme mb-one-dark
+theme mb-catppuccin-frappe
+theme mb-catppuccin-macchiato
+theme mb-ayu-dark
+theme mb-ayu-light
+theme mb-monokai
+theme mb-kanagawa
 auto marleybop-auto|Marleybop (auto)|marleybop-light|marleybop
 auto mb-nord-auto|Nord (auto)|mb-nord-light|mb-nord-dark
 auto mb-catppuccin-auto|Catppuccin (auto)|mb-catppuccin-latte|mb-catppuccin-mocha
@@ -26,3 +32,4 @@ auto mb-solarized-auto|Solarized (auto)|mb-solarized-light|mb-solarized-dark
 auto mb-github-auto|GitHub (auto)|mb-github-light|mb-github-dark
 auto mb-rose-pine-auto|Rose Pine (auto)|mb-rose-pine-dawn|mb-rose-pine
 auto mb-everforest-auto|Everforest (auto)|mb-everforest-light|mb-everforest-dark
+auto mb-ayu-auto|Ayu (auto)|mb-ayu-light|mb-ayu-dark

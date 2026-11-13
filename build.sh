@@ -12,7 +12,7 @@ trap 'rm -rf "$stage"' EXIT
 
 mkdir -p dist "$stage/fonts"
 # text files go in with LF endings whatever the checkout did
-for f in src/apply.sh src/palette.sed src/layer.css src/marleybop-theme.js LICENSE; do
+for f in src/apply.sh src/palette.sed src/layer.css src/marleybop-theme.js src/sensors.pl LICENSE; do
     tr -d '\r' < "$f" > "$stage/$(basename "$f")"
 done
 cp src/fonts/*.woff2 src/fonts/*.txt "$stage/fonts/"
