@@ -87,6 +87,65 @@
             root.style.setProperty(name, value);
         }
     };
+    // The Proxmox logo is an <img> of a two-colour SVG, which CSS cannot recolour. With the
+    // "accent" option a copy of it is put inline instead: the X takes the accent colour, the
+    // lettering the theme's text colour. Turning the option off shows the original image again.
+    var logoCache = {};
+    var logoWanted = false;
+    var paintLogo = function (on) {
+        logoWanted = !!on && active();
+        Ext.Array.each(document.querySelectorAll('img[src*="proxmox_logo.svg"]'), function (img) {
+            var box = img.parentNode;
+            var cur = box.querySelector('svg.mb-logo');
+            if (!logoWanted) {
+                if (cur) {
+                    box.removeChild(cur);
+                }
+                img.style.display = '';
+                return;
+            }
+            if (cur) {
+                return;
+            }
+            var src = img.getAttribute('src');
+            var place = function (text) {
+                if (!logoWanted || box.querySelector('svg.mb-logo')) {
+                    return;
+                }
+                var svg = new DOMParser().parseFromString(text, 'image/svg+xml').documentElement;
+                if (!svg || String(svg.nodeName).toLowerCase() !== 'svg') {
+                    return;
+                }
+                Ext.Array.each(svg.querySelectorAll('script, style, foreignObject'), function (n) {
+                    n.parentNode.removeChild(n);
+                });
+                var st = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+                st.textContent = 'svg.mb-logo path{fill:var(--mb-text)}svg.mb-logo .st0{fill:var(--mb-accent)}';
+                svg.insertBefore(st, svg.firstChild);
+                svg.setAttribute('class', 'mb-logo');
+                svg.setAttribute('width', img.width || 200);
+                svg.setAttribute('height', img.height || 35);
+                svg.setAttribute('role', 'img');
+                svg.setAttribute('aria-label', img.getAttribute('alt') || 'Proxmox');
+                svg.style.display = 'block';
+                box.insertBefore(document.importNode(svg, true), img);
+                img.style.display = 'none';
+            };
+            if (logoCache[src]) {
+                place(logoCache[src]);
+            } else if (window.fetch) {
+                window.fetch(src).then(function (r) {
+                    return r.ok ? r.text() : Promise.reject();
+                }).then(function (text) {
+                    logoCache[src] = text;
+                    place(text);
+                }).catch(function () {
+                    /* the original image stays */
+                });
+            }
+        });
+    };
+
     // themeKey: the theme the options are shown on (for whether "selected" follows the accent)
     var applyOptions = function (o, themeKey) {
         o = o || {};
@@ -116,6 +175,7 @@
         } else {
             root.removeAttribute('data-mb-density');
         }
+        paintLogo(o.logo === 'accent');
     };
 
     var currentKey = function () {
@@ -298,7 +358,7 @@
             title: gettext('Color Theme'),
             modal: true,
             width: 800,
-            height: 620,
+            height: 650,
             minWidth: 520,
             minHeight: 420,
             layout: { type: 'vbox', align: 'stretch' },
@@ -437,6 +497,11 @@
                             },
                             {
                                 xtype: 'fieldcontainer',
+                                fieldLabel: gettext('Logo'),
+                                items: [seg('logo', [['original', 'Original'], ['accent', 'Theme colours']])],
+                            },
+                            {
+                                xtype: 'fieldcontainer',
                                 fieldLabel: gettext('Font'),
                                 layout: { type: 'hbox', align: 'middle' },
                                 items: [
@@ -461,7 +526,7 @@
                                 xtype: 'component',
                                 cls: 'mb-note',
                                 margin: '2 0 6 0',
-                                html: gettext('Accent, corners, density and font are saved in this browser and apply to the themes with a preview card.'),
+                                html: gettext('These options are saved in this browser and apply to the themes with a preview card.'),
                             },
                         ],
                     },
@@ -657,6 +722,23 @@
     };
 
     Ext.onReady(function () {
+        try {
+            // the logo is drawn when the page header renders, which can be after this script ran
+            if (Ext.ClassManager.get('PMX.image.LogoSVG')) {
+                Ext.define('Marleybop.override.LogoSVG', {
+                    override: 'PMX.image.LogoSVG',
+                    afterRender: function () {
+                        this.callParent(arguments);
+                        paintLogo(loadOptions().logo === 'accent');
+                    },
+                });
+            }
+            paintLogo(loadOptions().logo === 'accent');
+        } catch (e) {
+            if (window.console) {
+                console.warn('Marleybop themes: logo colours not applied', e);
+            }
+        }
         try {
             if (Ext.ClassManager.get('PVE.node.StatusView')) {
                 defineSensors();

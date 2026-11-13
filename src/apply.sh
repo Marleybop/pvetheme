@@ -97,6 +97,7 @@ opt_valid() { # opt_valid <key> <value>
         density)  [[ $2 =~ ^(comfortable|compact)$ ]] ;;
         font)     [[ $2 =~ ^(inter|system|mono|custom)$ ]] ;;
         fontName) [[ $2 =~ ^[A-Za-z0-9\ ._-]{1,60}$ ]] ;;
+        logo)     [[ $2 =~ ^(original|accent)$ ]] ;;
         *) return 1 ;;
     esac
 }
@@ -493,7 +494,7 @@ cmd_options() {
     else
         for pair in "$@"; do
             k=${pair%%=*}; v=${pair#*=}
-            opt_valid "$k" "$v" || die "not a valid option: $pair   (accent=#rrggbb radius=soft|sharp|round density=comfortable|compact font=inter|system|mono)"
+            opt_valid "$k" "$v" || die "not a valid option: $pair   (accent=#rrggbb radius=soft|sharp|round density=comfortable|compact font=inter|system|mono logo=original|accent)"
             tmp=$(mktemp); { grep -v "^$k=" "$ETC/options" 2>/dev/null || true; echo "$k=$v"; } > "$tmp"; cat "$tmp" > "$ETC/options"; rm -f "$tmp"
         done
     fi
@@ -584,7 +585,7 @@ Everyone picks their theme in the web UI: your user name (top right) > Color The
 
   pvetheme list                      the themes, and which one is the default
   pvetheme default [<name>|none]     theme for browsers that have not picked one
-  pvetheme options [key=value ...]   starting accent, corners, density and font for every browser
+  pvetheme options [key=value ...]   starting accent, corners, density, font and logo for every browser
   pvetheme font "<family>" [file]    a font for every browser; with a file it is served from this node
   pvetheme sensors on|off            temperatures and fans on the node Summary
   pvetheme new <name> [copy-from]    start your own theme in $CUSTOM

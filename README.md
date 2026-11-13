@@ -26,7 +26,7 @@ Click your **user name** (top right) > **Color Theme**.
 ![The theme picker](docs/shots/dark/ov-theme.png)
 
 1. Click a card to preview that theme on the page behind.
-2. Optionally set the accent colour, corners, density and font.
+2. Optionally set the accent colour, corners, density, font, and whether the Proxmox logo takes the theme colours.
 3. Press **Apply**.
 
 Your choice is saved in your browser, so everyone can have their own.
@@ -48,7 +48,7 @@ Run on the node as root.
 |---|---|
 | `pvetheme list` | Show the themes |
 | `pvetheme default <name>` | Theme for browsers that have not picked one (`none` = Proxmox's own) |
-| `pvetheme options accent=#3b82f6 radius=round density=compact` | Starting options for every browser (`reset` to clear) |
+| `pvetheme options accent=#3b82f6 radius=round logo=accent` | Starting options for every browser: `accent`, `radius`, `density`, `font`, `logo` (`reset` to clear) |
 | `pvetheme font "Family" [file.woff2]` | Font for every browser; with a file it is served from the node (`none` to clear) |
 | `pvetheme sensors on` | Show temperatures and fan speeds on the node Summary (`off` to remove) |
 | `pvetheme new <name> [copy-from]` | Start your own theme |

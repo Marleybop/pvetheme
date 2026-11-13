@@ -98,8 +98,8 @@ check "broken themes are skipped, not fatal"                   'run reapply > /d
 rm -f "$W/etc/themes/bad.theme" "$W/etc/themes/Bad_Name.theme"
 
 helper_head() { head -n 2 "$W/wt/themes/marleybop-theme.js"; }
-run options accent=#3b82f6 radius=round density=compact > /dev/null
-check "node options reach the helper"                          'helper_head | grep -q "defaults: {\"accent\":\"#3b82f6\",\"radius\":\"round\",\"density\":\"compact\"}"'
+run options accent=#3b82f6 radius=round density=compact logo=accent > /dev/null
+check "node options reach the helper"                          'helper_head | grep -q "defaults: {\"accent\":\"#3b82f6\",\"radius\":\"round\",\"density\":\"compact\",\"logo\":\"accent\"}"'
 check "a bad option is refused"                                '! run options accent=red > /dev/null 2>&1 && ! run options "radius=round\"}" > /dev/null 2>&1'
 printf 'not really a font' > "$W/f.woff2"
 run font "My Font" "$W/f.woff2" > /dev/null
