@@ -1,8 +1,11 @@
 /* ==========================================================================
-   Marleybop layer for Proxmox VE  (version @MBVER@)
-   Sits on top of Proxmox's own dark theme after its colours have been mapped
-   to the Marleybop palette (palette.sed). Sharp, quiet: grey surfaces do the
-   work and Rust is kept for the main action button.
+   Marleybop theme engine for Proxmox VE: the style layer  (version @MBVER@)
+
+   Every theme is built from three parts, in this order:
+     1. Proxmox's own dark theme with its colours mapped to variables (palette.sed)
+     2. this layer
+     3. the theme's palette: a :root block of about twenty colours
+   Nothing below names a colour directly; change a theme by changing its palette.
    ========================================================================== */
 
 @font-face { font-family: "Marleybop Inter"; font-weight: 400; font-style: normal; font-display: swap;
@@ -16,67 +19,44 @@
 @font-face { font-family: "Marleybop Mono"; font-weight: 400 700; font-style: normal; font-display: swap;
   src: url("marleybop-mono-500.woff2?v=@MBVER@") format("woff2"); }
 
+/* Derived values. The palette supplies: bg surface raised border border-strong
+   text text-2 muted accent on-accent link sel on-sel good warn bad bad-fill bar. */
 :root {
-  --mb-theme: marleybop-dark;
-  --mb-bg: #111214;
-  --mb-surface: #1c1e21;
-  --mb-well: #151719;
-  --mb-raised: #26292d;
-  --mb-hover: #22252a;
-  --mb-selected: #2b2e33;
-  --mb-border: #2b2e33;
-  --mb-border-strong: #3a3e44;
-  --mb-text: #f6f5f2;
-  --mb-text-2: #b9bdc2;
-  --mb-muted: #8c9198;
-  --mb-ink: #16181b;
-  --mb-paper: #f6f5f2;
-  --mb-rust: #c8452a;
-  --mb-rust-dark: #a33620;
-  --mb-link: #e2683f;
-  --mb-good: #6db04a;
-  --mb-warn: #e0a93b;
-  --mb-bad: #ff8a80;
-  --mb-bad-fill: #e5534b;
+  --mb-well: color-mix(in srgb, var(--mb-surface) 45%, var(--mb-bg));
+  --mb-hover: color-mix(in srgb, var(--mb-text) 4%, var(--mb-surface));
+  --mb-selected: color-mix(in srgb, var(--mb-text) 9%, var(--mb-surface));
+  --mb-alt: color-mix(in srgb, var(--mb-surface) 70%, var(--mb-bg));
+  --mb-line: color-mix(in srgb, var(--mb-text) 5%, var(--mb-surface));
+  --mb-control-hover: color-mix(in srgb, var(--mb-text) 7%, var(--mb-raised));
+  --mb-control-hover-border: color-mix(in srgb, var(--mb-text) 14%, var(--mb-border-strong));
+  --mb-faint: color-mix(in srgb, var(--mb-muted) 70%, var(--mb-surface));
+  --mb-icon: var(--mb-text-2);
+  --mb-accent-hover: color-mix(in srgb, var(--mb-accent) 88%, white);
+  --mb-accent-press: color-mix(in srgb, var(--mb-accent) 82%, black);
+  --mb-link-hover: color-mix(in srgb, var(--mb-link) 80%, var(--mb-text));
+  --mb-hint-bg: color-mix(in srgb, var(--mb-warn) 14%, var(--mb-surface));
+  --mb-warning-row: color-mix(in srgb, var(--mb-warn) 14%, var(--mb-surface));
+  --mb-invalid-row: color-mix(in srgb, var(--mb-bad-fill) 20%, var(--mb-surface));
+  --mb-good-row: color-mix(in srgb, var(--mb-good) 16%, var(--mb-surface));
   --mb-radius: 4px;
   --mb-radius-lg: 8px;
+  --mb-row-pad: 5px;
   --mb-font: "Marleybop Inter", Inter, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --mb-font-head: "Marleybop Grotesk", "Space Grotesk", "Marleybop Inter", Inter, "Segoe UI", system-ui, sans-serif;
+  --mb-font-head: "Marleybop Grotesk", "Space Grotesk", var(--mb-font);
   --mb-font-mono: "Marleybop Mono", "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
-
-  /* read by marleybop-theme.js for the RRD charts */
-  /* grey carries the main series, the warm colour marks the second one */
-  --mb-chart-1: #b9bdc2;
-  --mb-chart-2: #e2683f;
-  --mb-chart-3: #6f9fc7;
-  --mb-chart-4: #6db04a;
-  --mb-chart-5: #e0a93b;
-  --mb-chart-6: #8c9198;
-  --mb-chart-fill-opacity: 0.16;
-
-  /* read by Proxmox's own gauge and chart code */
-  --pwt-panel-background: #1c1e21;
-  --pwt-text-color: #f6f5f2;
-  --pwt-gauge-default: #b9bdc2;
-  --pwt-gauge-back: #26292d;
-  --pwt-gauge-warn: #e0a93b;
-  --pwt-gauge-crit: #e5534b;
-  --pwt-chart-primary: #3a3e44;
-  --pwt-chart-grid-stroke: #2b2e33;
-
-  color-scheme: dark;
-  accent-color: #c8452a;
+  accent-color: var(--mb-accent);
 }
+:root[data-mb-density="compact"] { --mb-row-pad: 2px; }
 
 /* ---------- Scrollbars --------------------------------------------------- */
-* { scrollbar-width: thin; scrollbar-color: #3a3e44 transparent; }
+* { scrollbar-width: thin; scrollbar-color: var(--mb-border-strong) transparent; }
 @supports not (scrollbar-width: thin) {
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #3a3e44; border: 2px solid transparent; background-clip: padding-box; border-radius: 6px; }
-  ::-webkit-scrollbar-thumb:hover { background-color: #4a4f56; }
+  ::-webkit-scrollbar-thumb { background: var(--mb-border-strong); border: 2px solid transparent; background-clip: padding-box; border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background-color: var(--mb-muted); }
 }
-::selection { background: #4a4f56; color: #fff; }
+::selection { background: color-mix(in srgb, var(--mb-accent) 45%, var(--mb-surface)); color: var(--mb-text); }
 
 /* ---------- Type ---------------------------------------------------------
    ExtJS sets its font class by class, so the text classes are listed here.
@@ -107,24 +87,25 @@ pre, code, tt, .pmx-md code, .pmx-md pre, .x-form-textarea.pmx-monospace, .pmx-m
   font-size: 12px;
 }
 a, .pmx-md a, .pmx-hint a, .eol-notice a { color: var(--mb-link); }
-a:hover, .pmx-md a:hover { color: #f08a66; }
+a:hover, .pmx-md a:hover { color: var(--mb-link-hover); }
 
 /* ---------- Page, panels, splitters -------------------------------------- */
 .x-body, .x-viewport > .x-body, body.x-border-layout-ct, div.x-border-layout-ct { background-color: var(--mb-bg); color: var(--mb-text); }
 .x-panel-body-default { background-color: var(--mb-surface); border-color: var(--mb-border); color: var(--mb-text); }
-.x-panel-header-default { background-color: var(--mb-surface); border-bottom: 1px solid var(--mb-border); }
+.x-panel-header-default { background-color: var(--mb-surface); border: none; border-bottom: 1px solid var(--mb-border); }
 .x-panel-header-default-vertical { border-bottom: none; }
 .x-panel-default-outer-border-trbl, .x-panel-default-framed { border-color: var(--mb-border) !important; }
+.x-panel-default { border-color: var(--mb-border); }
 .pve-toolbar-bg { background-color: var(--mb-surface); }
 .x-splitter, .x-splitter-horizontal, .x-splitter-vertical { background-color: var(--mb-bg); }
 .x-splitter-active { background-color: var(--mb-border-strong); opacity: 0.8; }
 .x-layout-split-left, .x-layout-split-right, .x-layout-split-top, .x-layout-split-bottom { opacity: 0.55; }
-.x-keyboard-mode .x-splitter-focus::after { border-color: var(--mb-paper); }
+.x-keyboard-mode .x-splitter-focus::after { border-color: var(--mb-text); }
 /* header tools are blue sprites in the stock theme: make them neutral */
-.x-tool-img { filter: grayscale(1) brightness(1.9); opacity: 0.75; }
-.x-tool-img.x-tool-expand, .x-tool-img.x-tool-collapse, .x-tool-img.x-tool-refresh { filter: grayscale(1) brightness(1.4); }
+.x-tool-img { filter: var(--mb-tool-filter); opacity: 0.75; }
+.x-tool-img.x-tool-expand, .x-tool-img.x-tool-collapse, .x-tool-img.x-tool-refresh { filter: var(--mb-tool-filter); }
 .x-tool-over .x-tool-img, .x-tool-over .x-tool-img.x-tool-expand,
-.x-tool-over .x-tool-img.x-tool-collapse, .x-tool-over .x-tool-img.x-tool-refresh { filter: grayscale(1) brightness(2.4); opacity: 1; }
+.x-tool-over .x-tool-img.x-tool-collapse, .x-tool-over .x-tool-img.x-tool-refresh { filter: var(--mb-tool-filter-hover); opacity: 1; }
 .x-tool-tool-el.fa, .x-tool-tool-el.x-fa, .x-tool .fa { color: var(--mb-text-2); }
 .x-tool-over .x-tool-tool-el.fa, .x-tool-over .fa { color: var(--mb-text); }
 
@@ -135,131 +116,158 @@ a:hover, .pmx-md a:hover { color: #f08a66; }
 .x-toolbar-default .x-toolbar-separator { border-color: var(--mb-border-strong); }
 .x-toolbar-text-default { color: var(--mb-text-2); }
 
-.x-btn { border-radius: var(--mb-radius); transition: background-color 0.12s ease, border-color 0.12s ease; }
-.x-btn-default-toolbar-small { background-color: var(--mb-raised); border-color: var(--mb-border-strong); box-shadow: none; }
+.x-btn { border-radius: var(--mb-radius); background-image: none; transition: background-color 0.12s ease, border-color 0.12s ease; }
+.x-btn-default-toolbar-small { background-color: var(--mb-raised); border-color: var(--mb-border-strong); box-shadow: none; background-image: none; }
 .x-btn-default-toolbar-small .x-btn-inner-default-toolbar-small { color: var(--mb-text); font-weight: 500; }
 .x-btn-default-toolbar-small .x-btn-icon-el-default-toolbar-small { color: var(--mb-text-2); }
 .x-btn-default-toolbar-small.x-btn-over,
-.x-keyboard-mode .x-btn-default-toolbar-small.x-btn-focus { background-color: #30343a; border-color: #4a4f56; }
-.x-btn-default-toolbar-small.x-btn.x-btn-menu-active { background-color: #30343a; border-color: #4a4f56; }
-.x-btn-default-toolbar-small.x-btn.x-btn-pressed { background-color: var(--mb-paper); border-color: var(--mb-paper); }
+.x-keyboard-mode .x-btn-default-toolbar-small.x-btn-focus { background-color: var(--mb-control-hover); border-color: var(--mb-control-hover-border); }
+.x-btn-default-toolbar-small.x-btn.x-btn-menu-active { background-color: var(--mb-control-hover); border-color: var(--mb-control-hover-border); }
+.x-btn-default-toolbar-small.x-btn.x-btn-pressed { background-color: var(--mb-sel); border-color: var(--mb-sel); }
 .x-btn-default-toolbar-small.x-btn.x-btn-pressed .x-btn-inner-default-toolbar-small,
-.x-btn-default-toolbar-small.x-btn.x-btn-pressed .x-btn-icon-el-default-toolbar-small { color: var(--mb-ink); }
+.x-btn-default-toolbar-small.x-btn.x-btn-pressed .x-btn-icon-el-default-toolbar-small { color: var(--mb-on-sel); }
 .x-btn-default-toolbar-small.x-btn.x-btn-disabled { background-color: transparent; border-color: var(--mb-border); }
 .x-btn.x-btn-disabled, .x-btn.x-item-disabled { opacity: 0.45; }
-.x-keyboard-mode .x-btn-focus { outline: 2px solid var(--mb-paper); outline-offset: 1px; }
+.x-keyboard-mode .x-btn-focus { outline: 2px solid var(--mb-text); outline-offset: 1px; }
+.x-btn-focus .x-btn-wrap, .x-btn-focus .x-btn-inner { outline: none !important; }
 
 /* ExtJS's "default" button UI is used all over (header buttons, the tree's gear, toggles),
    so outside dialogs it is neutral like every other button */
-.x-btn-default-small { background-color: var(--mb-raised); border-color: var(--mb-border-strong); box-shadow: none; }
+.x-btn-default-small { background-color: var(--mb-raised); border-color: var(--mb-border-strong); box-shadow: none; background-image: none; }
 .x-btn-default-small .x-btn-inner-default-small { color: var(--mb-text); font-weight: 500; }
 .x-btn-default-small .x-btn-icon-el-default-small { color: var(--mb-text-2); }
 .x-btn-default-small.x-btn-over,
-.x-keyboard-mode .x-btn-default-small.x-btn-focus { background-color: #30343a; border-color: #4a4f56; }
-.x-btn-default-small.x-btn.x-btn-menu-active { background-color: #30343a; border-color: #4a4f56; }
+.x-keyboard-mode .x-btn-default-small.x-btn-focus { background-color: var(--mb-control-hover); border-color: var(--mb-control-hover-border); }
+.x-btn-default-small.x-btn.x-btn-menu-active { background-color: var(--mb-control-hover); border-color: var(--mb-control-hover-border); }
 .x-btn-default-small.x-btn.x-btn-disabled { background-color: transparent; border-color: var(--mb-border); }
 .x-btn-default-small.x-btn.x-btn-pressed,
 .proxmox-inline-button.x-btn.x-btn-pressed,
-.proxmox-inline-button.x-btn.x-btn-pressed.x-btn-default-toolbar-small { background-color: var(--mb-paper); border-color: var(--mb-paper); }
+.proxmox-inline-button.x-btn.x-btn-pressed.x-btn-default-toolbar-small { background-color: var(--mb-sel); border-color: var(--mb-sel); }
 .x-btn-default-small.x-btn.x-btn-pressed .x-btn-inner, .x-btn-default-small.x-btn.x-btn-pressed .x-btn-icon-el,
-.proxmox-inline-button.x-btn.x-btn-pressed .x-btn-inner, .proxmox-inline-button.x-btn.x-btn-pressed .x-btn-icon-el { color: var(--mb-ink); }
+.proxmox-inline-button.x-btn.x-btn-pressed .x-btn-inner, .proxmox-inline-button.x-btn.x-btn-pressed .x-btn-icon-el { color: var(--mb-on-sel); }
 .proxmox-inline-button { background-color: var(--mb-raised); border-color: var(--mb-border-strong); }
 .proxmox-inline-button .x-btn-inner, .proxmox-inline-button .x-btn-icon-el { color: var(--mb-text); }
 .proxmox-inline-button.x-btn-over,
-.x-keyboard-mode .proxmox-inline-button.x-btn-default-toolbar-small.x-btn-focus { background-color: #30343a; border-color: #4a4f56; }
+.x-keyboard-mode .proxmox-inline-button.x-btn-default-toolbar-small.x-btn-focus { background-color: var(--mb-control-hover); border-color: var(--mb-control-hover-border); }
+/* the user menu button carries an inline dark-grey fill from pvemanagerlib.js */
+.x-btn-default-small[style*="background-color"] { background-color: var(--mb-raised) !important; border-color: var(--mb-border-strong) !important; }
+.x-btn-default-small[style*="background-color"].x-btn-over,
+.x-btn-default-small[style*="background-color"].x-btn-menu-active { background-color: var(--mb-control-hover) !important; border-color: var(--mb-control-hover-border) !important; }
 .x-segmented-button .x-btn { border-radius: 0; }
 .x-segmented-button .x-segmented-button-first { border-radius: var(--mb-radius) 0 0 var(--mb-radius); }
 .x-segmented-button .x-segmented-button-last { border-radius: 0 var(--mb-radius) var(--mb-radius) 0; }
 
-/* the main action in a dialog: the one Rust element */
-.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small) { background-color: var(--mb-rust); border-color: var(--mb-rust); }
-.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small) .x-btn-inner-default-small { color: #fff; font-weight: 600; }
-.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small) .x-btn-icon-el-default-small { color: #fff; }
+/* the main action in a dialog carries the accent */
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small) { background-color: var(--mb-accent); border-color: var(--mb-accent); }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small) .x-btn-inner-default-small { color: var(--mb-on-accent); font-weight: 600; }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small) .x-btn-icon-el-default-small { color: var(--mb-on-accent); }
 .x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn-over,
-.x-keyboard-mode .x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn-focus { background-color: #d5502f; border-color: #d5502f; }
-.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-pressed { background-color: var(--mb-rust-dark); border-color: var(--mb-rust-dark); }
-.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-pressed .x-btn-inner { color: #fff; }
+.x-keyboard-mode .x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn-focus { background-color: var(--mb-accent-hover); border-color: var(--mb-accent-hover); }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-pressed { background-color: var(--mb-accent-press); border-color: var(--mb-accent-press); }
+.x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-pressed .x-btn-inner { color: var(--mb-on-accent); }
 .x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-disabled { background-color: var(--mb-raised); border-color: var(--mb-border-strong); }
 .x-window .x-toolbar-footer .x-btn-default-small:not(.x-btn-default-toolbar-small).x-btn.x-btn-disabled .x-btn-inner-default-small { color: var(--mb-text-2); }
 
-/* ---------- Tabs: selected control is Paper fill, Ink text --------------- */
-.x-tab-bar-default, .x-tab-bar-default-top, .x-tab-bar-body-default { background-color: var(--mb-surface); }
+/* ---------- Tabs --------------------------------------------------------- */
+.x-tab-bar-default, .x-tab-bar-default-top, .x-tab-bar-body-default { background-color: var(--mb-surface); background-image: none; }
 .x-tab-bar-default-top > .x-tab-bar-body-default { padding-bottom: 4px; }
 .x-tab-bar-strip-default { background-color: var(--mb-border); }
-.x-tab-default, .x-tab-default-top { background-color: transparent; border-color: transparent; border-radius: var(--mb-radius); transition: background-color 0.12s ease; }
+.x-tab-default, .x-tab-default-top { background-color: transparent; background-image: none; border-color: transparent; border-radius: var(--mb-radius); transition: background-color 0.12s ease; }
 .x-tab-inner-default { color: var(--mb-text-2); font-weight: 500; }
 .x-tab-icon-el-default { color: var(--mb-text-2); }
 .x-tab-default.x-tab-over { background-color: var(--mb-raised); border-color: var(--mb-raised); }
 .x-tab-default.x-tab-over .x-tab-inner-default { color: var(--mb-text); }
-.x-tab-default.x-tab.x-tab-active { background-color: var(--mb-paper); border-color: var(--mb-paper); }
+.x-tab-default.x-tab.x-tab-active { background-color: var(--mb-sel); border-color: var(--mb-sel); }
 .x-tab-default.x-tab.x-tab-active .x-tab-inner-default,
-.x-tab-default.x-tab.x-tab-active .x-tab-icon-el-default { color: var(--mb-ink); font-weight: 600; }
+.x-tab-default.x-tab.x-tab-active .x-tab-icon-el-default { color: var(--mb-on-sel); font-weight: 600; }
 .x-tab-default.x-tab.x-tab-disabled { background-color: transparent; }
 .x-tab-default.x-tab.x-tab-disabled .x-tab-inner-default { color: var(--mb-muted); }
 .x-keyboard-mode .x-tab-default.x-tab-focus,
-.x-keyboard-mode .x-tab-default.x-tab-focus.x-tab-over { background-color: var(--mb-raised); border-color: var(--mb-paper); }
-.x-keyboard-mode .x-tab-default.x-tab-focus.x-tab-active { background-color: var(--mb-paper); border-color: var(--mb-muted); }
+.x-keyboard-mode .x-tab-default.x-tab-focus.x-tab-over { background-color: var(--mb-raised); border-color: var(--mb-text); }
+.x-keyboard-mode .x-tab-default.x-tab-focus.x-tab-active { background-color: var(--mb-sel); border-color: var(--mb-muted); }
 
 /* ---------- Side navigation (the per-object menu) ------------------------ */
 .x-treelist-pve-nav { background-color: var(--mb-surface); border-color: var(--mb-border); }
 .x-treelist-item, .x-treelist-pve-nav .x-treelist-item { background-color: transparent; }
-.x-treelist-row { border-radius: 0; transition: background-color 0.12s ease; }
+.x-treelist-row { transition: background-color 0.12s ease; }
+:root[data-mb-density="compact"] .x-treelist-row { margin-top: 1px; }
 .x-treelist-item-text { color: var(--mb-text-2); }
 .x-treelist-item-icon, .x-treelist-item-expander { color: var(--mb-muted); }
 .x-treelist-row-over { background-color: var(--mb-hover); }
 .x-treelist-row-over > * > .x-treelist-item-text, .x-treelist-row-over > * > .x-treelist-item-icon { color: var(--mb-text); }
-.x-treelist-item-selected > .x-treelist-row { background-color: var(--mb-selected); box-shadow: inset 2px 0 0 var(--mb-paper); }
+.x-treelist-item-selected > .x-treelist-row { background-color: var(--mb-selected); box-shadow: inset 2px 0 0 var(--mb-sel); }
 .x-treelist-item-selected > .x-treelist-row > * > .x-treelist-item-text { color: var(--mb-text); font-weight: 600; }
 .x-treelist-item-selected > .x-treelist-row > * > .x-treelist-item-icon { color: var(--mb-text); }
+.x-treelist-item-icon.lxc::after, .x-treelist-item-icon.qemu::after { background-color: var(--mb-surface); }
 .x-treelist-item-selected .lxc::after, .x-treelist-item-selected .qemu::after { background-color: var(--mb-selected); text-shadow: -1px 0 1px var(--mb-selected); }
 
 /* ---------- Grids and trees ---------------------------------------------- */
-.x-grid-header-ct { background-color: var(--mb-surface); border: none; border-bottom: 1px solid var(--mb-border); }
-.x-column-header, .x-column-header-default { background-color: var(--mb-surface); border-color: var(--mb-border); color: var(--mb-muted); }
+.x-grid-header-ct { background-color: var(--mb-surface); background-image: none; border: none; border-bottom: 1px solid var(--mb-border); }
+.x-column-header, .x-column-header-default { background-color: var(--mb-surface); background-image: none; border-color: var(--mb-border); color: var(--mb-muted); }
 .x-column-header-text, .x-column-header-text-inner {
   font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--mb-muted);
 }
 .x-column-header-over, .x-column-header-open,
-.x-column-header-last .x-column-header-over .x-column-header-trigger { background-color: var(--mb-hover); }
-.x-column-header-sort-ASC, .x-column-header-sort-DESC { background-color: var(--mb-surface); }
+.x-column-header-last .x-column-header-over .x-column-header-trigger { background-color: var(--mb-hover); background-image: none; }
+.x-column-header-sort-ASC, .x-column-header-sort-DESC { background-color: var(--mb-surface); background-image: none; }
 .x-column-header-sort-ASC .x-column-header-text, .x-column-header-sort-DESC .x-column-header-text,
 .x-column-header-sort-ASC .x-column-header-text-inner, .x-column-header-sort-DESC .x-column-header-text-inner { color: var(--mb-text); }
 .x-column-header-trigger { background-color: var(--mb-raised); border-color: var(--mb-border-strong); }
 
 .x-grid-body, .x-grid-view, .x-tree-view { background-color: var(--mb-surface); }
 .x-grid-item, .x-grid-cell-row-numberer { background-color: var(--mb-surface); color: var(--mb-text); }
-.x-grid-item-alt { background-color: #191b1e; }
+.x-grid-cell-inner { padding-top: var(--mb-row-pad); padding-bottom: var(--mb-row-pad); }
+.x-grid-item-alt { background-color: var(--mb-alt); }
 .x-grid-with-row-lines .x-grid-item, .x-grid-with-row-lines .x-grid-item:first-child,
-.x-grid-with-row-lines .x-grid-item:last-child { border-color: #24272b; }
-.x-grid-with-col-lines .x-grid-cell, .x-grid-cell-special { border-color: #24272b; }
-.x-grid-item-over, .x-grid-with-row-lines .x-grid-item.x-grid-item-over { background-color: var(--mb-hover); border-color: #24272b; }
-.x-grid-item-selected, .x-grid-with-row-lines .x-grid-item.x-grid-item-selected { background-color: var(--mb-selected); border-color: #24272b; }
+.x-grid-with-row-lines .x-grid-item:last-child { border-color: var(--mb-line); }
+.x-grid-with-col-lines .x-grid-cell, .x-grid-cell-special { border-color: var(--mb-line); background-image: none; }
+.x-grid-item-over, .x-grid-with-row-lines .x-grid-item.x-grid-item-over { background-color: var(--mb-hover); border-color: var(--mb-line); color: var(--mb-text); }
+.x-grid-item-selected, .x-grid-with-row-lines .x-grid-item.x-grid-item-selected { background-color: var(--mb-selected); border-color: var(--mb-line); color: var(--mb-text); }
 .x-grid-with-row-lines .x-grid-item-selected + .x-grid-item,
-.x-grid-with-row-lines .x-grid-item-over + .x-grid-item { border-color: #24272b; }
-.x-keyboard-mode .x-grid-item-focused { background-color: var(--mb-selected); color: #fff; }
+.x-grid-with-row-lines .x-grid-item-over + .x-grid-item { border-color: var(--mb-line); }
+.x-keyboard-mode .x-grid-item-focused { background-color: var(--mb-selected); color: var(--mb-text); }
 .x-keyboard-mode .x-grid-item-focused .x-grid-cell-inner::before { border-color: var(--mb-muted); }
 .x-keyboard-mode .x-column-header.x-column-header-focus .x-column-header-inner::after { border-color: var(--mb-muted); }
+.x-grid-item .x-grid-icon-custom.lxc::after, .x-grid-item .x-grid-icon-custom.qemu::after,
+.x-tree-icon-custom.lxc::after, .x-tree-icon-custom.qemu::after { background-color: var(--mb-surface); }
+.x-tree-icon-custom::after, .x-grid-icon-custom::after, .pmx-tree-icon-custom::after { text-shadow: -1px 0 1px var(--mb-surface); }
 .x-grid-item-over .lxc::after, .x-grid-item-over .qemu::after,
 .x-treelist-item-over .lxc::after, .x-treelist-item-over .qemu::after { background-color: var(--mb-hover) !important; text-shadow: -1px 0 1px var(--mb-hover); }
 .x-grid-item-selected .lxc::after, .x-grid-item-selected .qemu::after,
 .x-keyboard-mode .x-grid-item-focused .lxc::after, .x-keyboard-mode .x-grid-item-focused .qemu::after { background-color: var(--mb-selected) !important; text-shadow: -1px 0 1px var(--mb-selected); }
-.x-grid-item-alt .x-grid-icon-custom.lxc::after, .x-grid-item-alt .x-grid-icon-custom.qemu::after { background-color: #191b1e; }
+.x-grid-item-alt .x-grid-icon-custom.lxc::after, .x-grid-item-alt .x-grid-icon-custom.qemu::after { background-color: var(--mb-alt); }
 .x-grid-group-hd { background-color: var(--mb-well); border-color: var(--mb-border); }
 .x-grid-group-title { color: var(--mb-text-2); font-weight: 600; }
-.proxmox-apt-repos .x-grid-group-hd { background-color: var(--mb-well); }
+.proxmox-apt-repos .x-grid-group-hd { background-color: var(--mb-well); color: var(--mb-text); }
+.proxmox-apt-repos .x-grid-group-title { color: var(--mb-text-2); }
 .x-grid-empty { background-color: var(--mb-surface); color: var(--mb-muted); }
 .x-grid-row-summary .x-grid-cell { border-color: var(--mb-border); }
 .proxmox-disabled-row, .proxmox-disabled-row td { color: var(--mb-muted); }
-.proxmox-good-row { background-color: #1f3318; }
+.proxmox-good-row { background-color: var(--mb-good-row); }
+.proxmox-invalid-row { background-color: var(--mb-invalid-row); }
 div[id^="pveResourceTree-"][id$="-body"] { border-color: var(--mb-surface); }
 .x-tree-node-text { color: var(--mb-text); }
+.x-tree-icon-custom, .x-grid-icon-custom, .x-tree-icon-custom.running, .x-grid-icon-custom.running { color: var(--mb-icon); }
 .x-tree-icon-custom.stopped, .x-tree-icon-custom.offline,
-.x-grid-icon-custom.stopped, .x-grid-icon-custom.offline { color: #6b7078; }
+.x-grid-icon-custom.stopped, .x-grid-icon-custom.offline { color: var(--mb-faint); }
 .x-tree-icon-custom.online::after, .x-grid-icon-custom.online::after,
 .x-tree-icon-custom.running::after, .x-grid-icon-custom.running::after { color: var(--mb-good); }
+.x-tree-icon-custom.locked::after, .x-grid-icon-custom.locked::after,
+.x-tree-icon-custom.lock-backup::after, .x-grid-icon-custom.lock-backup::after,
+.x-tree-icon-custom.lock-migrate::after, .x-grid-icon-custom.lock-migrate::after,
+.x-tree-icon-custom.lock-suspended::after, .x-grid-icon-custom.lock-suspended::after { color: var(--mb-text); }
 .x-action-col-icon::before { color: var(--mb-text-2); }
 .x-action-col-icon:hover::before, .x-action-col-icon:hover::after { color: var(--mb-text); text-shadow: none; }
 .x-dd-drag-proxy { border-radius: var(--mb-radius); }
+
+/* tree arrows: a drawn chevron instead of the sprite */
+.x-tree-arrows .x-tree-expander, .x-tree-arrows .x-tree-expander-over .x-tree-expander {
+  background-image: none; filter: none; color: var(--mb-muted); text-align: center;
+  font-size: 0; line-height: 0; /* the glyph must not make the row taller */
+}
+.x-tree-arrows .x-tree-expander::before { content: "\f105"; display: block; height: 24px; font: normal normal normal 13px/24px FontAwesome; }
+.x-tree-arrows .x-grid-tree-node-expanded .x-tree-expander::before { content: "\f107"; }
+.x-tree-arrows .x-tree-expander-over .x-tree-expander { color: var(--mb-text); }
 
 /* ---------- Forms -------------------------------------------------------- */
 .x-form-item-label-default { color: var(--mb-text-2); }
@@ -271,21 +279,38 @@ div[id^="pveResourceTree-"][id$="-body"] { border-color: var(--mb-surface); }
 .x-form-text-default.x-form-textarea { background-color: var(--mb-well); border-radius: var(--mb-radius); }
 .x-form-trigger-wrap-default.x-form-trigger-wrap-focus { border-color: var(--mb-text-2); }
 .x-form-trigger-wrap-default.x-form-trigger-wrap-invalid { border-color: var(--mb-bad-fill); }
-.x-form-empty-field-default, .x-form-text-default::placeholder { color: #6b7078; }
+.x-form-empty-field-default, .x-form-text-default::placeholder { color: var(--mb-faint); }
 .x-form-readonly .x-form-trigger-wrap-default, .x-item-disabled .x-form-trigger-wrap-default { background-color: transparent; }
 .x-form-trigger-default.x-form-trigger-over, .x-form-spinner-default.x-form-spinner-over { background-color: var(--mb-raised); }
+.x-form-trigger-default:not([class*="pmx-"]), .x-form-spinner-default { filter: var(--mb-sprite-filter); }
 .x-fieldset-default { border-color: var(--mb-border); border-radius: var(--mb-radius); }
 .x-fieldset-header-default > .x-fieldset-header-text { color: var(--mb-text-2); font-weight: 600; }
 .x-form-invalid-under, .x-form-invalid-under-default { color: var(--mb-bad); }
-.pve-edit-tag.editable span { background-color: var(--mb-well); border-color: var(--mb-border-strong); }
+.pve-edit-tag.editable span { background-color: var(--mb-well); border-color: var(--mb-border-strong); color: var(--mb-text); }
+
+/* checkboxes and radios: drawn, not sprites */
+.x-form-checkbox-default, .x-form-radio-default {
+  background-image: none; filter: none; box-sizing: border-box;
+  width: 15px; height: 15px; border: 1.5px solid var(--mb-muted); border-radius: 3px;
+  background-color: var(--mb-well); transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+.x-form-radio-default { border-radius: 50%; }
+.x-form-cb-wrap-inner:hover .x-form-checkbox-default, .x-form-cb-wrap-inner:hover .x-form-radio-default { border-color: var(--mb-text-2); }
+.x-form-cb-checked .x-form-checkbox-default { background-color: var(--mb-sel); border-color: var(--mb-sel); }
+.x-form-cb-checked .x-form-checkbox-default::after {
+  content: "\f00c"; display: block; font: normal normal normal 10px/12px FontAwesome; text-align: center; color: var(--mb-on-sel);
+}
+.x-form-cb-checked .x-form-radio-default { border-color: var(--mb-sel); background-color: var(--mb-well); box-shadow: inset 0 0 0 3px var(--mb-well), inset 0 0 0 8px var(--mb-sel); }
+.x-keyboard-mode .x-form-checkbox-focus, .x-keyboard-mode .x-form-radio-focus { outline: 2px solid var(--mb-text-2); outline-offset: 1px; }
+.x-item-disabled .x-form-checkbox-default, .x-item-disabled .x-form-radio-default { opacity: 0.5; }
 
 /* ---------- Menus, dropdown lists, tooltips ------------------------------ */
 .x-menu-default { border: 1px solid var(--mb-border-strong); border-radius: 6px; background-color: var(--mb-surface); }
-.x-menu-body-default { background-color: var(--mb-surface); border-radius: 6px; }
+.x-menu-body-default { background-color: var(--mb-surface); background-image: none; border-radius: 6px; }
 .x-menu-header { background-color: var(--mb-surface); color: var(--mb-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
 .x-menu-item-text-default { color: var(--mb-text); }
 .x-menu-item-icon-default { color: var(--mb-text-2); }
-.x-menu-item-default.x-menu-item-focus, .x-menu-item-default.x-menu-item-active { background-color: var(--mb-selected); color: #fff; }
+.x-menu-item-default.x-menu-item-focus, .x-menu-item-default.x-menu-item-active { background-color: var(--mb-selected); background-image: none; color: var(--mb-text); }
 .x-menu-item-default.x-menu-item-separator, .x-menu-icon-separator-default { background-color: var(--mb-surface); border-color: var(--mb-border); }
 .x-menu-item-default.x-menu-item-disabled .x-menu-item-text-default { color: var(--mb-muted); }
 
@@ -297,31 +322,32 @@ div[id^="pveResourceTree-"][id$="-body"] { border-color: var(--mb-surface); }
 .x-boundlist .x-grid-item-over { background-color: var(--mb-hover); }
 .x-boundlist .x-grid-item-selected { background-color: var(--mb-selected); }
 
-.x-tip-default { background-color: #0b0c0d; border-color: var(--mb-border-strong); border-radius: var(--mb-radius); }
-.x-tip-body-default { color: var(--mb-text); }
-.x-tip-form-invalid { background-color: #0b0c0d; border-color: var(--mb-bad-fill); border-radius: var(--mb-radius); }
+.x-tip-default { background-color: var(--mb-raised); border-color: var(--mb-border-strong); border-radius: var(--mb-radius); }
+.x-tip-body-default, .x-tip-header-title-default { color: var(--mb-text); }
+.x-tip-form-invalid { background-color: var(--mb-raised); border-color: var(--mb-bad-fill); border-radius: var(--mb-radius); }
+.x-tip-body-form-invalid { color: var(--mb-text); }
 
 /* ---------- Windows and masks -------------------------------------------- */
 .x-window-default { background-color: var(--mb-surface); border: 1px solid var(--mb-border-strong); border-radius: var(--mb-radius-lg); }
-.x-window-header-default { background-color: var(--mb-surface); border-color: transparent; border-radius: 7px 7px 0 0; }
+.x-window-header-default { background-color: var(--mb-surface); background-image: none; border-color: transparent; border-radius: calc(var(--mb-radius-lg) - 1px) calc(var(--mb-radius-lg) - 1px) 0 0; }
 .x-window-header-default-top { border-bottom: 1px solid var(--mb-border); }
 .x-window-body-default { background-color: var(--mb-surface); border-color: transparent; color: var(--mb-text); }
-.x-window-default > .x-toolbar-footer, .x-window-default > .x-docked-bottom { border-radius: 0 0 7px 7px; }
 .x-window-ghost { background-color: var(--mb-surface); }
 .x-message-box .x-window-body { background-color: var(--mb-surface); }
-.x-css-shadow { border-radius: var(--mb-radius-lg); box-shadow: 0 18px 50px 4px rgba(0, 0, 0, 0.6) !important; }
-.x-mask { background-color: rgba(11, 12, 13, 0.62); }
+.x-css-shadow { border-radius: var(--mb-radius-lg); box-shadow: var(--mb-shadow) !important; }
+.x-mask { background-color: var(--mb-mask); }
 .x-mask-msg { background-color: var(--mb-surface); border: 1px solid var(--mb-border-strong); border-radius: 6px; }
-.x-window-header-default .x-mask, .x-window-header-default-top .x-mask { background-color: rgba(28, 30, 33, 0.7); }
+.x-mask-msg-text { color: var(--mb-text); }
+.x-window-header-default .x-mask, .x-window-header-default-top .x-mask { background-color: color-mix(in srgb, var(--mb-surface) 70%, transparent); }
 .x-toast { border-radius: var(--mb-radius-lg); }
-.install-mask { background-color: var(--mb-surface); }
-.pmx-hint { background-color: #2a2413; color: var(--mb-text); border-radius: var(--mb-radius); }
-.proxmox-warning-row { background-color: #2a2413; }
+.install-mask { background-color: var(--mb-surface); color: var(--mb-text); }
+.pmx-hint { background-color: var(--mb-hint-bg); color: var(--mb-text); border-radius: var(--mb-radius); }
+.proxmox-warning-row { background-color: var(--mb-warning-row); }
 
 /* ---------- Progress bars, gauges, charts, status ------------------------ */
-.x-progress-default { background-color: var(--mb-raised); border-radius: 2px; overflow: hidden; }
-.x-progress-default .x-progress-bar-default { background-color: var(--mb-text-2); }
-.x-progress-default .x-progress-text { color: var(--mb-ink); }
+.x-progress-default { background-color: var(--mb-raised); background-image: none; border-color: transparent; border-radius: 2px; overflow: hidden; }
+.x-progress-default .x-progress-bar-default { background-color: var(--mb-bar); background-image: none; }
+.x-progress-default .x-progress-text { color: var(--mb-bg); }
 .x-progress-default .x-progress-text-back { color: var(--mb-text); }
 .x-progress.warning .x-progress-bar { background-color: var(--mb-warn); }
 .x-progress.critical .x-progress-bar { background-color: var(--mb-bad-fill); }
@@ -337,27 +363,37 @@ div[id^="pveResourceTree-"][id$="-body"] { border-color: var(--mb-surface); }
 .warning, .fa.warning { color: var(--mb-warn); }
 .critical, .fa.critical { color: var(--mb-bad) !important; }
 .info-blue { color: var(--mb-text-2) !important; }
-.faded { color: #6b7078; }
+.faded { color: var(--mb-faint); }
 .normal { color: var(--mb-text-2); }
+.black, .fa.black { color: var(--mb-icon); }
 .pve-ceph-status-busy { color: var(--mb-text-2); }
 div.monitor, table.osds td, table.osds tr { border-color: var(--mb-border); }
 
 /* ---------- Notes / markdown --------------------------------------------- */
 .pmx-md code { background-color: var(--mb-well); border-radius: 3px; padding: 1px 4px; }
 .pmx-md pre code { border-left-color: var(--mb-border-strong); }
+.pmx-md blockquote { border-left-color: var(--mb-border-strong); }
 .pmx-md tbody td { border-bottom-color: var(--mb-border); }
-.pmx-md tbody tr:nth-of-type(2n) { background-color: #191b1e; }
+.pmx-md tbody tr:last-of-type td { border-bottom-color: var(--mb-border-strong); }
+.pmx-md tbody tr:nth-of-type(2n) { background-color: var(--mb-alt); }
 .pmx-md tbody tr:hover td { background-color: var(--mb-hover); }
 .pmx-md h1, .pmx-md h2, .pmx-md h3 { font-family: var(--mb-font-head); font-weight: 500; letter-spacing: -0.01em; }
 
 /* ---------- Date picker -------------------------------------------------- */
 .x-datepicker, .x-monthpicker { border: 1px solid var(--mb-border-strong); border-radius: 6px; background-color: var(--mb-surface); }
-.x-datepicker-header, .x-datepicker-footer, .x-monthpicker-buttons { background-color: var(--mb-well); }
-.x-datepicker-column-header { background-color: var(--mb-surface); color: var(--mb-muted); }
-.x-datepicker-selected div.x-datepicker-date, .x-monthpicker-item a.x-monthpicker-selected { background-color: var(--mb-paper); color: var(--mb-ink); border-radius: 3px; }
-div.x-datepicker-date:hover, a.x-monthpicker-item-inner:hover { background-color: var(--mb-selected); border-radius: 3px; }
+.x-datepicker-header, .x-datepicker-footer, .x-monthpicker-buttons { background-color: var(--mb-well); background-image: none; }
+.x-datepicker-column-header { background-color: var(--mb-surface); background-image: none; color: var(--mb-muted); }
+.x-datepicker-month .x-btn-inner, .x-datepicker-date, .x-monthpicker-item-inner { color: var(--mb-text); }
+.x-datepicker-selected div.x-datepicker-date, .x-monthpicker-item a.x-monthpicker-selected { background-color: var(--mb-sel); color: var(--mb-on-sel); border-radius: 3px; border-color: transparent; }
+div.x-datepicker-date:hover, a.x-monthpicker-item-inner:hover { background-color: var(--mb-selected); color: var(--mb-text); border-radius: 3px; }
 .x-datepicker-today .x-datepicker-date { border-color: var(--mb-muted); }
 
+/* ---------- Motion ------------------------------------------------------- */
+@keyframes mb-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .x-window-default, .x-menu-default, .x-boundlist, .x-tip-default, .x-datepicker { animation: mb-fade 0.12s ease-out; }
+  .x-window-ghost { animation: none; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .x-btn, .x-tab-default, .x-treelist-row, .x-form-trigger-wrap-default { transition: none; }
+  .x-btn, .x-tab-default, .x-treelist-row, .x-form-trigger-wrap-default, .x-form-checkbox-default { transition: none; }
 }

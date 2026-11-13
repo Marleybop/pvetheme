@@ -1,0 +1,28 @@
+theme marleybop
+theme marleybop-light
+theme marleybop-black
+theme mb-nord-dark
+theme mb-nord-light
+theme mb-dracula
+theme mb-catppuccin-mocha
+theme mb-catppuccin-latte
+theme mb-gruvbox-dark
+theme mb-gruvbox-light
+theme mb-tokyo-night
+theme mb-solarized-dark
+theme mb-solarized-light
+theme mb-github-dark
+theme mb-github-light
+theme mb-rose-pine
+theme mb-rose-pine-dawn
+theme mb-everforest-dark
+theme mb-everforest-light
+theme mb-one-dark
+auto marleybop-auto|Marleybop (auto)|marleybop-light|marleybop
+auto mb-nord-auto|Nord (auto)|mb-nord-light|mb-nord-dark
+auto mb-catppuccin-auto|Catppuccin (auto)|mb-catppuccin-latte|mb-catppuccin-mocha
+auto mb-gruvbox-auto|Gruvbox (auto)|mb-gruvbox-light|mb-gruvbox-dark
+auto mb-solarized-auto|Solarized (auto)|mb-solarized-light|mb-solarized-dark
+auto mb-github-auto|GitHub (auto)|mb-github-light|mb-github-dark
+auto mb-rose-pine-auto|Rose Pine (auto)|mb-rose-pine-dawn|mb-rose-pine
+auto mb-everforest-auto|Everforest (auto)|mb-everforest-light|mb-everforest-dark
